@@ -30,7 +30,19 @@ FetchContent_Declare(
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(nlohmann_json)
 
-# 4. Catch2 (Unit Testing Framework)
+# 4. SDL3 (Cross-Platform Windowing & Input)
+message(STATUS "[VYRA Dependencies] Configuring SDL3...")
+FetchContent_Declare(
+    SDL3
+    URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.2.8.zip
+)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SDL3)
+
+# 5. Catch2 (Unit Testing Framework)
 if(VYRA_BUILD_TESTS)
     message(STATUS "[VYRA Dependencies] Configuring Catch2 for testing...")
     FetchContent_Declare(

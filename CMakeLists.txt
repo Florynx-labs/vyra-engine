@@ -19,6 +19,7 @@ include(cmake/VyraDependencies.cmake)
 
 # Subdirectories
 add_subdirectory(engine/core)
+add_subdirectory(engine/platform)
 
 if(VYRA_BUILD_TESTS)
     enable_testing()

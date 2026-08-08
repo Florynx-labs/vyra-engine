@@ -1,10 +1,12 @@
 add_executable(vyra_tests
     unit/test_core.cpp
+    unit/test_platform.cpp
 )
 
 target_link_libraries(vyra_tests
     PRIVATE
         vyra::core
+        vyra::platform
         Catch2::Catch2WithMain
 )
 
