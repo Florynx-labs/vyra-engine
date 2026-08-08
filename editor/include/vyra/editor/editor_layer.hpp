@@ -8,6 +8,8 @@
 #include "vyra/editor/panels/inspector_panel.hpp"
 #include "vyra/editor/panels/console_panel.hpp"
 
+#include "vyra/scene/editor_camera.hpp"
+
 namespace vyra::editor {
 
     enum class SceneState { Edit = 0, Play = 1 };
@@ -23,6 +25,8 @@ namespace vyra::editor {
         void OnUpdate(Timestep ts);
         void OnImGuiRender();
 
+        const vyra::scene::EditorCamera& GetEditorCamera() const { return m_EditorCamera; }
+
     private:
         void NewScene();
         void OpenScene();
@@ -37,6 +41,8 @@ namespace vyra::editor {
     private:
         Ref<vyra::scene::Scene> m_EditorScene;
         Ref<vyra::scene::Scene> m_ActiveScene;
+
+        vyra::scene::EditorCamera m_EditorCamera;
 
         SceneState m_SceneState{ SceneState::Edit };
 

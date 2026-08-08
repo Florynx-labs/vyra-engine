@@ -1,11 +1,14 @@
 add_library(vyra_rhi STATIC
     include/vyra/rhi/rhi.hpp
+    include/vyra/rhi/rhi_resources.hpp
     src/vulkan/vulkan_context.hpp
     src/vulkan/vulkan_context.cpp
     src/vulkan/vulkan_device.hpp
     src/vulkan/vulkan_device.cpp
     src/vulkan/vulkan_swapchain.hpp
     src/vulkan/vulkan_swapchain.cpp
+    src/vulkan/vulkan_resources.hpp
+    src/vulkan/vulkan_resources.cpp
 )
 
 add_library(vyra::rhi ALIAS vyra_rhi)

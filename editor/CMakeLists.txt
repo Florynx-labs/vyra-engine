@@ -22,6 +22,7 @@ target_link_libraries(vyra_editor PRIVATE
     vyra::core
     vyra::platform
     vyra::rhi
+    vyra::renderer
     vyra::ecs
     vyra::scene
     imgui

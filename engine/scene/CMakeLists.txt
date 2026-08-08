@@ -1,9 +1,11 @@
 add_library(vyra_scene STATIC
     include/vyra/scene/scene.hpp
     include/vyra/scene/scene_camera.hpp
+    include/vyra/scene/editor_camera.hpp
     include/vyra/scene/components.hpp
     include/vyra/scene/scene_serializer.hpp
     src/scene.cpp
+    src/editor_camera.cpp
     src/scene_serializer.cpp
 )
 

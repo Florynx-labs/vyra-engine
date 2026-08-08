@@ -32,6 +32,8 @@ namespace vyra::editor {
         m_ViewportPanel.SetContext(m_ActiveScene);
         m_HierarchyPanel.SetContext(m_ActiveScene);
 
+        m_EditorCamera = vyra::scene::EditorCamera(45.0f, 16.0f / 9.0f, 0.1f, 1000.0f);
+
         m_ConsolePanel.AddMessage(LogMessage::Level::Info, "VYRA Engine Editor initialized successfully.");
         m_ConsolePanel.AddMessage(LogMessage::Level::Info, "Obsidian Dark UI Theme applied.");
     }
@@ -40,6 +42,23 @@ namespace vyra::editor {
     }
 
     void EditorLayer::OnUpdate(Timestep ts) {
+        // Sync Viewport size to EditorCamera
+        const auto& viewportSize = m_ViewportPanel.GetViewportSize();
+        if (viewportSize.x > 0.0f && viewportSize.y > 0.0f) {
+            m_EditorCamera.SetViewportSize(viewportSize.x, viewportSize.y);
+        }
+
+        if (m_ViewportPanel.IsHovered() || m_ViewportPanel.IsFocused()) {
+            ImGuiIO& io = ImGui::GetIO();
+            vyra::scene::CameraInput input;
+            input.MouseDeltaX = io.MouseDelta.x;
+            input.MouseDeltaY = io.MouseDelta.y;
+            input.ScrollDelta = io.MouseWheel;
+            input.RightMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+            input.MiddleMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+            m_EditorCamera.OnUpdate(input, ts.GetSeconds());
+        }
+
         if (m_SceneState == SceneState::Play) {
             m_ActiveScene->OnUpdateRuntime(ts);
         } else {
