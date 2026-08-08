@@ -33,6 +33,12 @@ int main(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+    // Build ImGui Font Atlas
+    unsigned char* fontPixels = nullptr;
+    int fontWidth = 0, fontHeight = 0;
+    io.Fonts->GetTexDataAsRGBA32(&fontPixels, &fontWidth, &fontHeight);
+    io.Fonts->Build();
+
     // Attach Editor Layer
     vyra::editor::EditorLayer editorLayer;
     editorLayer.OnAttach();
@@ -43,12 +49,17 @@ int main(int argc, char** argv) {
 
     while (running) {
         window->OnUpdate();
+
+        // Update ImGui Display metrics
+        io.DisplaySize = ImVec2(static_cast<float>(window->GetWidth()), static_cast<float>(window->GetHeight()));
+        io.DeltaTime = ts.GetSeconds();
+
         editorLayer.OnUpdate(ts);
 
-        // ImGui Frame rendering simulation / pass
+        // ImGui Frame rendering
         ImGui::NewFrame();
         editorLayer.OnImGuiRender();
-        ImGui::EndFrame();
+        ImGui::Render();
     }
 
     editorLayer.OnDetach();
