@@ -1,0 +1,42 @@
+# Build & Binary Directories
+/build/
+/bin/
+/lib/
+/out/
+/_deps/
+
+# Visual Studio & IDEs
+/.vs/
+/*.vcxproj
+/*.vcxproj.filters
+/*.vcxproj.user
+/*.sln
+/*.suo
+/.idea/
+/.vscode/
+/*.user
+
+# CMake Generated Files & Cache
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/Makefile
+/compile_commands.json
+/CTestTestfile.cmake
+/Testing/
+
+# VYRA Engine Derived & Cache Files
+/.vyra/
+/*.vyra.cache
+/*.log
+vyra_engine.log
+
+# Operating System Specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
