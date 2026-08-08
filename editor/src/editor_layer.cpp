@@ -59,10 +59,16 @@ namespace vyra::editor {
             m_EditorCamera.OnUpdate(input, ts.GetSeconds());
         }
 
-        if (m_SceneState == SceneState::Play) {
-            m_ActiveScene->OnUpdateRuntime(ts);
-        } else {
-            m_ActiveScene->OnUpdateEditor(ts);
+        switch (m_SceneState) {
+            case SceneState::Edit:
+                m_ActiveScene->OnUpdateEditor(ts);
+                break;
+            case SceneState::Play:
+                m_ActiveScene->OnUpdateRuntime(ts);
+                break;
+            case SceneState::Pause:
+                // Paused runtime simulation — no transform / physics updates
+                break;
         }
     }
 
@@ -141,12 +147,20 @@ namespace vyra::editor {
 
         ImGui::Begin("##toolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        const char* buttonText = m_SceneState == SceneState::Edit ? "▶ Play" : "⏹ Stop";
-        if (ImGui::Button(buttonText, ImVec2(80, 24))) {
+        const char* playButtonText = m_SceneState == SceneState::Edit ? "▶ Play" : "⏹ Stop";
+        if (ImGui::Button(playButtonText, ImVec2(80, 24))) {
             if (m_SceneState == SceneState::Edit) {
                 OnScenePlay();
             } else {
                 OnSceneStop();
+            }
+        }
+
+        if (m_SceneState != SceneState::Edit) {
+            ImGui::SameLine();
+            const char* pauseText = m_SceneState == SceneState::Pause ? "▶ Resume" : "⏸ Pause";
+            if (ImGui::Button(pauseText, ImVec2(80, 24))) {
+                OnScenePause();
             }
         }
 
@@ -189,6 +203,18 @@ namespace vyra::editor {
         m_ViewportPanel.SetContext(m_ActiveScene);
         m_HierarchyPanel.SetContext(m_ActiveScene);
         m_ConsolePanel.AddMessage(LogMessage::Level::Info, "Entered Play Mode (World Isolated).");
+    }
+
+    void EditorLayer::OnScenePause() {
+        if (m_SceneState == SceneState::Edit) return;
+
+        if (m_SceneState == SceneState::Play) {
+            m_SceneState = SceneState::Pause;
+            m_ConsolePanel.AddMessage(LogMessage::Level::Info, "Paused Play Mode.");
+        } else {
+            m_SceneState = SceneState::Play;
+            m_ConsolePanel.AddMessage(LogMessage::Level::Info, "Resumed Play Mode.");
+        }
     }
 
     void EditorLayer::OnSceneStop() {

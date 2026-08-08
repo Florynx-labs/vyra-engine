@@ -12,7 +12,7 @@
 
 namespace vyra::editor {
 
-    enum class SceneState { Edit = 0, Play = 1 };
+    enum class SceneState { Edit = 0, Play = 1, Pause = 2 };
 
     class VYRA_API EditorLayer {
     public:
@@ -26,6 +26,7 @@ namespace vyra::editor {
         void OnImGuiRender();
 
         const vyra::scene::EditorCamera& GetEditorCamera() const { return m_EditorCamera; }
+        SceneState GetSceneState() const { return m_SceneState; }
 
     private:
         void NewScene();
@@ -33,6 +34,7 @@ namespace vyra::editor {
         void SaveSceneAs();
 
         void OnScenePlay();
+        void OnScenePause();
         void OnSceneStop();
 
         void UI_DrawMenuBar();

@@ -136,3 +136,54 @@ TEST_CASE("VYRA Scene - Deterministic JSON Serialization Roundtrip", "[scene]") 
         std::filesystem::remove(tempFilepath);
     }
 }
+
+TEST_CASE("VYRA Scene - Play Mode World Isolation & Entity Lifecycle", "[scene][playmode]") {
+    vyra::Ref<vyra::scene::Scene> editorScene = vyra::CreateRef<vyra::scene::Scene>("Editor World");
+
+    vyra::ecs::Entity staticObj = editorScene->CreateEntity("StaticObject");
+    auto& staticTransform = staticObj.GetComponent<vyra::scene::TransformComponent>();
+    staticTransform.Translation = glm::vec3(1.0f, 0.0f, 0.0f);
+
+    vyra::ecs::Entity dynamicObj = editorScene->CreateEntity("DynamicObject");
+    auto& dynamicTransform = dynamicObj.GetComponent<vyra::scene::TransformComponent>();
+    dynamicTransform.Translation = glm::vec3(0.0f, 5.0f, 0.0f);
+
+    REQUIRE(editorScene->GetRegistry().Size() == 2);
+
+    // --- Start Play Mode ---
+    vyra::Ref<vyra::scene::Scene> runtimeScene = vyra::scene::Scene::Copy(editorScene);
+    REQUIRE(runtimeScene->GetRegistry().Size() == 2);
+
+    // 1. Mutate transform during play mode
+    runtimeScene->GetRegistry().Each<vyra::scene::TransformComponent>([&](vyra::ecs::EntityID id, vyra::scene::TransformComponent& tc) {
+        vyra::ecs::Entity entity(id, &runtimeScene->GetRegistry());
+        if (entity.GetName() == "DynamicObject") {
+            tc.Translation.y = 100.0f; // Falling object / physics explosion
+        }
+    });
+
+    // 2. Spawn temporary particle entity in play mode
+    vyra::ecs::Entity spawnedParticle = runtimeScene->CreateEntity("SpawnedParticle");
+    REQUIRE(runtimeScene->GetRegistry().Size() == 3);
+
+    // 3. Destroy static object in play mode
+    runtimeScene->GetRegistry().Each<vyra::scene::TagComponent>([&](vyra::ecs::EntityID id, vyra::scene::TagComponent& tag) {
+        if (tag.Tag == "StaticObject") {
+            runtimeScene->DestroyEntity(vyra::ecs::Entity(id, &runtimeScene->GetRegistry()));
+        }
+    });
+
+    REQUIRE(runtimeScene->GetRegistry().Size() == 2); // DynamicObject + SpawnedParticle
+
+    // --- Verify Editor World Isolation ---
+    // The original editor scene must remain 100% untouched
+    REQUIRE(editorScene->GetRegistry().Size() == 2);
+    REQUIRE(staticTransform.Translation == glm::vec3(1.0f, 0.0f, 0.0f));
+    REQUIRE(dynamicTransform.Translation == glm::vec3(0.0f, 5.0f, 0.0f));
+
+    // --- Stop Play Mode ---
+    // In EditorLayer, activeScene is simply reset to editorScene
+    vyra::Ref<vyra::scene::Scene> restoredScene = editorScene;
+    REQUIRE(restoredScene->GetRegistry().Size() == 2);
+}
+
