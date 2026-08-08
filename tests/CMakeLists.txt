@@ -2,6 +2,7 @@ add_executable(vyra_tests
     unit/test_core.cpp
     unit/test_platform.cpp
     unit/test_rhi.cpp
+    unit/test_ecs.cpp
 )
 
 target_link_libraries(vyra_tests
@@ -9,6 +10,7 @@ target_link_libraries(vyra_tests
         vyra::core
         vyra::platform
         vyra::rhi
+        vyra::ecs
         Catch2::Catch2WithMain
 )
 

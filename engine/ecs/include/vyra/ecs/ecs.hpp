@@ -1,0 +1,164 @@
+#pragma once
+
+#include "vyra/core/base.hpp"
+#include "vyra/core/uuid.hpp"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
+
+#include <entt/entt.hpp>
+
+#include <cstdint>
+#include <string>
+#include <tuple>
+
+namespace vyra::ecs {
+
+    using EntityID = uint32_t;
+    constexpr EntityID NullEntity = 0;
+
+    class Registry;
+
+    // --- Core ECS Components ---
+    struct VYRA_API TagComponent {
+        std::string Tag;
+        UUID ID;
+
+        TagComponent() = default;
+        TagComponent(const std::string& tag) : Tag(tag), ID() {}
+        TagComponent(const std::string& tag, UUID id) : Tag(tag), ID(id) {}
+    };
+
+    struct VYRA_API TransformComponent {
+        glm::vec3 Translation{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 Rotation{ 0.0f, 0.0f, 0.0f }; // Euler angles in radians
+        glm::vec3 Scale{ 1.0f, 1.0f, 1.0f };
+
+        TransformComponent() = default;
+        TransformComponent(const glm::vec3& translation) : Translation(translation) {}
+
+        glm::mat4 GetTransform() const {
+            glm::mat4 rotation = glm::toMat4(glm::quat(Rotation));
+            return glm::translate(glm::mat4(1.0f), Translation)
+                * rotation
+                * glm::scale(glm::mat4(1.0f), Scale);
+        }
+    };
+
+    // --- Registry Wrapper ---
+    class VYRA_API Registry {
+    public:
+        Registry() = default;
+        ~Registry() = default;
+
+        EntityID Create();
+        void Destroy(EntityID entity);
+        void Clear();
+
+        template<typename T, typename... Args>
+        T& Emplace(EntityID entity, Args&&... args) {
+            return m_Registry.emplace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
+        }
+
+        template<typename T, typename... Args>
+        T& Replace(EntityID entity, Args&&... args) {
+            return m_Registry.replace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
+        }
+
+        template<typename T>
+        bool Has(EntityID entity) const {
+            return m_Registry.all_of<T>(static_cast<entt::entity>(entity));
+        }
+
+        template<typename T>
+        T& Get(EntityID entity) {
+            return m_Registry.get<T>(static_cast<entt::entity>(entity));
+        }
+
+        template<typename T>
+        const T& Get(EntityID entity) const {
+            return m_Registry.get<T>(static_cast<entt::entity>(entity));
+        }
+
+        template<typename T>
+        T* TryGet(EntityID entity) {
+            return m_Registry.try_get<T>(static_cast<entt::entity>(entity));
+        }
+
+        template<typename T>
+        void Remove(EntityID entity) {
+            m_Registry.remove<T>(static_cast<entt::entity>(entity));
+        }
+
+        template<typename... Components, typename Func>
+        void Each(Func&& func) {
+            auto view = m_Registry.view<Components...>();
+            for (auto entity : view) {
+                if constexpr (sizeof...(Components) == 1) {
+                    func(static_cast<EntityID>(entity), view.template get<Components...>(entity));
+                } else {
+                    std::apply([&](auto&... comps) {
+                        func(static_cast<EntityID>(entity), comps...);
+                    }, view.template get<Components...>(entity));
+                }
+            }
+        }
+
+        size_t Size() const {
+            return m_Registry.storage<entt::entity>()->in_use();
+        }
+
+        entt::registry& GetNativeRegistry() { return m_Registry; }
+        const entt::registry& GetNativeRegistry() const { return m_Registry; }
+
+    private:
+        entt::registry m_Registry;
+    };
+
+    // --- Entity Handle Wrapper ---
+    class VYRA_API Entity {
+    public:
+        Entity() = default;
+        Entity(EntityID handle, Registry* registry)
+            : m_EntityHandle(handle), m_Registry(registry) {}
+
+        template<typename T, typename... Args>
+        T& AddComponent(Args&&... args) {
+            return m_Registry->Emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+        }
+
+        template<typename T>
+        T& GetComponent() {
+            return m_Registry->Get<T>(m_EntityHandle);
+        }
+
+        template<typename T>
+        const T& GetComponent() const {
+            return m_Registry->Get<T>(m_EntityHandle);
+        }
+
+        template<typename T>
+        bool HasComponent() const {
+            return m_Registry->Has<T>(m_EntityHandle);
+        }
+
+        template<typename T>
+        void RemoveComponent() {
+            m_Registry->Remove<T>(m_EntityHandle);
+        }
+
+        operator bool() const { return m_EntityHandle != NullEntity && m_Registry != nullptr; }
+        operator EntityID() const { return m_EntityHandle; }
+
+        EntityID GetID() const { return m_EntityHandle; }
+        UUID GetUUID() const { return GetComponent<TagComponent>().ID; }
+        const std::string& GetName() const { return GetComponent<TagComponent>().Tag; }
+
+    private:
+        EntityID m_EntityHandle{ NullEntity };
+        Registry* m_Registry{ nullptr };
+    };
+
+} // namespace vyra::ecs

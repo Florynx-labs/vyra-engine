@@ -63,7 +63,15 @@ if(TARGET volk)
     target_link_libraries(volk PUBLIC Vulkan::Headers)
 endif()
 
-# 7. Catch2 (Unit Testing Framework)
+# 7. EnTT (Header-only ECS Library)
+message(STATUS "[VYRA Dependencies] Configuring EnTT...")
+FetchContent_Declare(
+    EnTT
+    URL https://github.com/skypjack/entt/archive/refs/tags/v3.13.2.zip
+)
+FetchContent_MakeAvailable(EnTT)
+
+# 8. Catch2 (Unit Testing Framework)
 if(VYRA_BUILD_TESTS)
     message(STATUS "[VYRA Dependencies] Configuring Catch2 for testing...")
     FetchContent_Declare(
