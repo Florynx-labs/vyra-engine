@@ -155,6 +155,13 @@ namespace vyra::ecs {
             m_Registry->Remove<T>(m_EntityHandle);
         }
 
+        bool operator==(const Entity& other) const {
+            return m_EntityHandle == other.m_EntityHandle && m_Registry == other.m_Registry;
+        }
+        bool operator!=(const Entity& other) const {
+            return !(*this == other);
+        }
+
         operator bool() const {
             return m_EntityHandle != NullEntity && m_Registry != nullptr && m_Registry->GetNativeRegistry().valid(static_cast<entt::entity>(m_EntityHandle));
         }

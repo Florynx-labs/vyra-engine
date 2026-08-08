@@ -23,6 +23,7 @@ add_subdirectory(engine/platform)
 add_subdirectory(engine/rhi)
 add_subdirectory(engine/ecs)
 add_subdirectory(engine/scene)
+add_subdirectory(editor)
 
 if(VYRA_BUILD_TESTS)
     enable_testing()

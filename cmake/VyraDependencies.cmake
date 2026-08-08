@@ -71,7 +71,32 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(EnTT)
 
-# 8. Catch2 (Unit Testing Framework)
+# 8. Dear ImGui (Docking Branch)
+message(STATUS "[VYRA Dependencies] Configuring Dear ImGui (Docking)...")
+FetchContent_Declare(
+    imgui
+    URL https://github.com/ocornut/imgui/archive/refs/heads/docking.zip
+)
+FetchContent_MakeAvailable(imgui)
+
+if(NOT TARGET imgui)
+    add_library(imgui STATIC
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+    )
+    target_include_directories(imgui PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
+    )
+    target_link_libraries(imgui PUBLIC SDL3::SDL3 volk Vulkan::Headers)
+endif()
+
+# 9. Catch2 (Unit Testing Framework)
 if(VYRA_BUILD_TESTS)
     message(STATUS "[VYRA Dependencies] Configuring Catch2 for testing...")
     FetchContent_Declare(
