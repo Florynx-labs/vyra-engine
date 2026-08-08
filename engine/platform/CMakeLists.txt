@@ -22,7 +22,6 @@ target_include_directories(vyra_platform
 target_link_libraries(vyra_platform
     PUBLIC
         vyra::core
-    PRIVATE
         SDL3::SDL3-static
 )
 

@@ -42,7 +42,28 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(SDL3)
 
-# 5. Catch2 (Unit Testing Framework)
+# 5. Vulkan Headers
+message(STATUS "[VYRA Dependencies] Configuring Vulkan Headers...")
+FetchContent_Declare(
+    vulkan_headers
+    URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.304.zip
+)
+FetchContent_MakeAvailable(vulkan_headers)
+
+# 6. Volk (Vulkan Meta-Loader)
+message(STATUS "[VYRA Dependencies] Configuring Volk...")
+FetchContent_Declare(
+    volk
+    URL https://github.com/zeux/volk/archive/refs/tags/1.4.304.zip
+)
+set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(volk)
+
+if(TARGET volk)
+    target_link_libraries(volk PUBLIC Vulkan::Headers)
+endif()
+
+# 7. Catch2 (Unit Testing Framework)
 if(VYRA_BUILD_TESTS)
     message(STATUS "[VYRA Dependencies] Configuring Catch2 for testing...")
     FetchContent_Declare(

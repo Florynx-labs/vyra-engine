@@ -62,6 +62,9 @@ namespace vyra {
     }
 
     Ref<spdlog::logger>& Log::GetLogger(LogChannel channel) {
+        if (!s_CoreLogger) {
+            Init();
+        }
         switch (channel) {
             case LogChannel::Core:     return s_CoreLogger;
             case LogChannel::Renderer: return s_RendererLogger;
