@@ -17,7 +17,7 @@
 namespace vyra::ecs {
 
     using EntityID = uint32_t;
-    constexpr EntityID NullEntity = 0;
+    constexpr EntityID NullEntity = static_cast<uint32_t>(entt::null);
 
     class Registry;
 
@@ -67,6 +67,11 @@ namespace vyra::ecs {
             return m_Registry.replace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
         }
 
+        template<typename T, typename... Args>
+        T& EmplaceOrReplace(EntityID entity, Args&&... args) {
+            return m_Registry.emplace_or_replace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
+        }
+
         template<typename T>
         bool Has(EntityID entity) const {
             return m_Registry.all_of<T>(static_cast<entt::entity>(entity));
@@ -107,7 +112,8 @@ namespace vyra::ecs {
         }
 
         size_t Size() const {
-            return m_Registry.storage<entt::entity>()->in_use();
+            auto storage = m_Registry.storage<entt::entity>();
+            return storage ? storage->in_use() : 0;
         }
 
         entt::registry& GetNativeRegistry() { return m_Registry; }
@@ -149,7 +155,9 @@ namespace vyra::ecs {
             m_Registry->Remove<T>(m_EntityHandle);
         }
 
-        operator bool() const { return m_EntityHandle != NullEntity && m_Registry != nullptr; }
+        operator bool() const {
+            return m_EntityHandle != NullEntity && m_Registry != nullptr && m_Registry->GetNativeRegistry().valid(static_cast<entt::entity>(m_EntityHandle));
+        }
         operator EntityID() const { return m_EntityHandle; }
 
         EntityID GetID() const { return m_EntityHandle; }

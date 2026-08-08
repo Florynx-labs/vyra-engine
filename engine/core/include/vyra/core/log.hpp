@@ -21,8 +21,14 @@ namespace vyra {
         static void Init();
         static void Shutdown();
 
-        static Ref<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
-        static Ref<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
+        static Ref<spdlog::logger>& GetCoreLogger() {
+            if (!s_CoreLogger) Init();
+            return s_CoreLogger;
+        }
+        static Ref<spdlog::logger>& GetClientLogger() {
+            if (!s_ClientLogger) Init();
+            return s_ClientLogger;
+        }
         static Ref<spdlog::logger>& GetLogger(LogChannel channel);
 
     private:
