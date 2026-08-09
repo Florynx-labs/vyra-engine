@@ -23,6 +23,8 @@ target_link_libraries(vyra_platform
     PUBLIC
         vyra::core
         SDL3::SDL3-static
+    PRIVATE
+        imgui
 )
 
 vyra_apply_compiler_flags(vyra_platform)

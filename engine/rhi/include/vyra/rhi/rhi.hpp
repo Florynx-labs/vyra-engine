@@ -90,4 +90,100 @@ namespace vyra::rhi {
         static Scope<RHISwapChain> Create();
     };
 
+    // -----------------------------------------------------------------------
+    // Render Pass Abstraction
+    // -----------------------------------------------------------------------
+    struct AttachmentDescription {
+        uint32_t Format{ 0 }; // VkFormat value
+        uint32_t Samples{ 1 }; // VkSampleCountFlagBits
+        uint32_t LoadOp{ 0 }; // VkAttachmentLoadOp
+        uint32_t StoreOp{ 0 }; // VkAttachmentStoreOp
+        uint32_t StencilLoadOp{ 0 }; // VkAttachmentLoadOp
+        uint32_t StencilStoreOp{ 0 }; // VkAttachmentStoreOp
+        uint32_t InitialLayout{ 0 }; // VkImageLayout
+        uint32_t FinalLayout{ 0 }; // VkImageLayout
+    };
+
+    struct SubpassDescription {
+        uint32_t ColorAttachmentCount{ 0 };
+        uint32_t* ColorAttachmentRefs{ nullptr }; // VkAttachmentReference
+        uint32_t DepthStencilAttachmentRef{ 0 }; // VkAttachmentReference (as uint32_t for simplicity)
+    };
+
+    struct RenderPassCreateInfo {
+        AttachmentDescription ColorAttachment;
+        AttachmentDescription DepthAttachment;
+        SubpassDescription Subpass;
+    };
+
+    class VYRA_API RHIRenderPass {
+    public:
+        virtual ~RHIRenderPass() = default;
+
+        virtual bool Init(RHIDevice& device, const RenderPassCreateInfo& info) = 0;
+        virtual void Shutdown(RHIDevice& device) = 0;
+
+        virtual void* GetNativeRenderPass() const = 0;
+
+        static Scope<RHIRenderPass> Create();
+    };
+
+    // -----------------------------------------------------------------------
+    // Command Buffer Abstraction
+    // -----------------------------------------------------------------------
+    class VYRA_API RHICommandPool {
+    public:
+        virtual ~RHICommandPool() = default;
+
+        virtual bool Init(RHIDevice& device, uint32_t queueFamilyIndex) = 0;
+        virtual void Shutdown(RHIDevice& device) = 0;
+
+        virtual void* GetNativeCommandPool() const = 0;
+
+        static Scope<RHICommandPool> Create();
+    };
+
+    class VYRA_API RHICommandBuffer {
+    public:
+        virtual ~RHICommandBuffer() = default;
+
+        virtual bool Begin() = 0;
+        virtual void End() = 0;
+        virtual void Reset() = 0;
+
+        virtual void* GetNativeCommandBuffer() const = 0;
+
+        static Scope<RHICommandBuffer> Create();
+    };
+
+    // -----------------------------------------------------------------------
+    // Synchronization Primitives
+    // -----------------------------------------------------------------------
+    class VYRA_API RHIFence {
+    public:
+        virtual ~RHIFence() = default;
+
+        virtual bool Init(RHIDevice& device, bool signaled = false) = 0;
+        virtual void Shutdown(RHIDevice& device) = 0;
+
+        virtual bool Wait(RHIDevice& device, uint64_t timeout) = 0;
+        virtual void Reset(RHIDevice& device) = 0;
+
+        virtual void* GetNativeFence() const = 0;
+
+        static Scope<RHIFence> Create();
+    };
+
+    class VYRA_API RHISemaphore {
+    public:
+        virtual ~RHISemaphore() = default;
+
+        virtual bool Init(RHIDevice& device) = 0;
+        virtual void Shutdown(RHIDevice& device) = 0;
+
+        virtual void* GetNativeSemaphore() const = 0;
+
+        static Scope<RHISemaphore> Create();
+    };
+
 } // namespace vyra::rhi

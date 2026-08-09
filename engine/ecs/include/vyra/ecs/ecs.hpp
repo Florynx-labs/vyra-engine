@@ -16,8 +16,8 @@
 
 namespace vyra::ecs {
 
-    using EntityID = uint32_t;
-    constexpr EntityID NullEntity = static_cast<uint32_t>(entt::null);
+    using EntityID = entt::entity;
+    constexpr EntityID NullEntity = entt::null;
 
     class Registry;
 
@@ -59,42 +59,42 @@ namespace vyra::ecs {
 
         template<typename T, typename... Args>
         T& Emplace(EntityID entity, Args&&... args) {
-            return m_Registry.emplace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
+            return m_Registry.emplace<T>(entity, std::forward<Args>(args)...);
         }
 
         template<typename T, typename... Args>
         T& Replace(EntityID entity, Args&&... args) {
-            return m_Registry.replace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
+            return m_Registry.replace<T>(entity, std::forward<Args>(args)...);
         }
 
         template<typename T, typename... Args>
         T& EmplaceOrReplace(EntityID entity, Args&&... args) {
-            return m_Registry.emplace_or_replace<T>(static_cast<entt::entity>(entity), std::forward<Args>(args)...);
+            return m_Registry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
         }
 
         template<typename T>
         bool Has(EntityID entity) const {
-            return m_Registry.all_of<T>(static_cast<entt::entity>(entity));
+            return m_Registry.all_of<T>(entity);
         }
 
         template<typename T>
         T& Get(EntityID entity) {
-            return m_Registry.get<T>(static_cast<entt::entity>(entity));
+            return m_Registry.get<T>(entity);
         }
 
         template<typename T>
         const T& Get(EntityID entity) const {
-            return m_Registry.get<T>(static_cast<entt::entity>(entity));
+            return m_Registry.get<T>(entity);
         }
 
         template<typename T>
         T* TryGet(EntityID entity) {
-            return m_Registry.try_get<T>(static_cast<entt::entity>(entity));
+            return m_Registry.try_get<T>(entity);
         }
 
         template<typename T>
         void Remove(EntityID entity) {
-            m_Registry.remove<T>(static_cast<entt::entity>(entity));
+            m_Registry.remove<T>(entity);
         }
 
         template<typename... Components, typename Func>
@@ -102,10 +102,10 @@ namespace vyra::ecs {
             auto view = m_Registry.view<Components...>();
             for (auto entity : view) {
                 if constexpr (sizeof...(Components) == 1) {
-                    func(static_cast<EntityID>(entity), view.template get<Components...>(entity));
+                    func(entity, view.template get<Components...>(entity));
                 } else {
                     std::apply([&](auto&... comps) {
-                        func(static_cast<EntityID>(entity), comps...);
+                        func(entity, comps...);
                     }, view.template get<Components...>(entity));
                 }
             }
@@ -163,7 +163,7 @@ namespace vyra::ecs {
         }
 
         operator bool() const {
-            return m_EntityHandle != NullEntity && m_Registry != nullptr && m_Registry->GetNativeRegistry().valid(static_cast<entt::entity>(m_EntityHandle));
+            return m_EntityHandle != NullEntity && m_Registry != nullptr && m_Registry->GetNativeRegistry().valid(m_EntityHandle);
         }
         operator EntityID() const { return m_EntityHandle; }
 

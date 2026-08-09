@@ -27,12 +27,15 @@ namespace vyra::rhi {
 
         VkBuffer    GetVkBuffer() const { return m_Buffer; }
         VkDeviceMemory GetMemory() const { return m_Memory; }
+        VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
+
+        void SetPhysicalDevice(VkPhysicalDevice physicalDevice) { m_PhysicalDevice = physicalDevice; }
 
     private:
         VkBuffer       m_Buffer{ VK_NULL_HANDLE };
         VkDeviceMemory m_Memory{ VK_NULL_HANDLE };
         uint64_t       m_Size{ 0 };
-        VkPhysicalDevice m_PhysicalDevice{ VK_NULL_HANDLE }; // stored for staging
+        VkPhysicalDevice m_PhysicalDevice{ VK_NULL_HANDLE };
     };
 
     // -----------------------------------------------------------------------

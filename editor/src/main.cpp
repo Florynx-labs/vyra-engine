@@ -6,7 +6,7 @@
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
-#include <backends/imgui_impl_vulkan.h>
+#include <backends/imgui_impl_sdlrenderer3.h>
 #include <SDL3/SDL.h>
 
 int main(int argc, char** argv) {
@@ -18,6 +18,13 @@ int main(int argc, char** argv) {
     // Create Platform Window
     vyra::WindowProps props("VYRA Engine Editor — Obsidian v0.1", 1600, 900);
     vyra::Scope<vyra::Window> window = vyra::Window::Create(props);
+    SDL_Window* sdlWindow = static_cast<SDL_Window*>(window->GetNativeWindow());
+
+    // Create SDL Hardware Renderer for Editor UI
+    SDL_Renderer* sdlRenderer = SDL_CreateRenderer(sdlWindow, nullptr);
+    if (!sdlRenderer) {
+        VYRA_LOG_ERROR("Failed to create SDL_Renderer: {0}", SDL_GetError());
+    }
 
     bool running = true;
     window->SetEventCallback([&running](vyra::Event& e) {
@@ -33,11 +40,9 @@ int main(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    // Build ImGui Font Atlas
-    unsigned char* fontPixels = nullptr;
-    int fontWidth = 0, fontHeight = 0;
-    io.Fonts->GetTexDataAsRGBA32(&fontPixels, &fontWidth, &fontHeight);
-    io.Fonts->Build();
+    // Setup ImGui Backends
+    ImGui_ImplSDL3_InitForSDLRenderer(sdlWindow, sdlRenderer);
+    ImGui_ImplSDLRenderer3_Init(sdlRenderer);
 
     // Attach Editor Layer
     vyra::editor::EditorLayer editorLayer;
@@ -50,20 +55,32 @@ int main(int argc, char** argv) {
     while (running) {
         window->OnUpdate();
 
-        // Update ImGui Display metrics
-        io.DisplaySize = ImVec2(static_cast<float>(window->GetWidth()), static_cast<float>(window->GetHeight()));
-        io.DeltaTime = ts.GetSeconds();
-
         editorLayer.OnUpdate(ts);
 
         // ImGui Frame rendering
+        ImGui_ImplSDLRenderer3_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
+
         editorLayer.OnImGuiRender();
+
         ImGui::Render();
+
+        if (sdlRenderer) {
+            SDL_SetRenderDrawColor(sdlRenderer, 18, 18, 22, 255);
+            SDL_RenderClear(sdlRenderer);
+            ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdlRenderer);
+            SDL_RenderPresent(sdlRenderer);
+        }
     }
 
     editorLayer.OnDetach();
+    ImGui_ImplSDLRenderer3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
+    if (sdlRenderer) {
+        SDL_DestroyRenderer(sdlRenderer);
+    }
     vyra::Log::Shutdown();
 
     return 0;

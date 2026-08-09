@@ -1,8 +1,10 @@
 add_library(vyra_renderer STATIC
     include/vyra/renderer/mesh.hpp
     include/vyra/renderer/mesh_renderer.hpp
+    include/vyra/renderer/sprite_renderer.hpp
     src/mesh.cpp
     src/mesh_renderer.cpp
+    src/sprite_renderer.cpp
 )
 
 add_library(vyra::renderer ALIAS vyra_renderer)

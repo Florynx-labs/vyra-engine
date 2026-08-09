@@ -3,12 +3,11 @@
 namespace vyra::ecs {
 
     EntityID Registry::Create() {
-        entt::entity entity = m_Registry.create();
-        return static_cast<EntityID>(entity);
+        return m_Registry.create();
     }
 
     void Registry::Destroy(EntityID entity) {
-        m_Registry.destroy(static_cast<entt::entity>(entity));
+        m_Registry.destroy(entity);
     }
 
     void Registry::Clear() {

@@ -21,6 +21,7 @@ namespace vyra::scene {
         vyra::ecs::Entity CreateEntity(const std::string& name = "Entity");
         vyra::ecs::Entity CreateEntityWithUUID(UUID uuid, const std::string& name = "Entity");
         void DestroyEntity(vyra::ecs::Entity entity);
+        void Clear();
 
         void OnUpdateRuntime(Timestep ts);
         void OnUpdateEditor(Timestep ts);

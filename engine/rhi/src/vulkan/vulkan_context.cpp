@@ -1,4 +1,5 @@
 #include "vulkan_context.hpp"
+#include "vyra/rhi/rhi_error.hpp"
 #include "vyra/core/log.hpp"
 #include "vyra/core/assert.hpp"
 
@@ -46,7 +47,8 @@ namespace vyra::rhi {
         // Initialize Volk (dynamic Vulkan function loader)
         VkResult volkResult = volkInitialize();
         if (volkResult != VK_SUCCESS) {
-            VYRA_LOG_CHANNEL(LogChannel::Renderer, error, "Failed to initialize Volk (Vulkan loader)");
+            RHIResult result = RHIResult::FromVkResult(volkResult, "Failed to initialize Volk (Vulkan loader)");
+            VYRA_LOG_CHANNEL(LogChannel::Renderer, error, "{}", result.GetMessage());
             return false;
         }
 
@@ -64,7 +66,7 @@ namespace vyra::rhi {
         appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 0, info.AppVersion, 0);
         appInfo.pEngineName = "VYRA Engine";
         appInfo.engineVersion = VK_MAKE_API_VERSION(0, 0, 1, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_3;
+        appInfo.apiVersion = VK_API_VERSION_1_4; // Updated to Vulkan 1.4
 
         // Extensions
         if (!SDL_WasInit(SDL_INIT_VIDEO)) {
@@ -114,7 +116,8 @@ namespace vyra::rhi {
 
         VkResult result = vkCreateInstance(&createInfo, nullptr, &m_Instance);
         if (result != VK_SUCCESS) {
-            VYRA_LOG_CHANNEL(LogChannel::Renderer, error, "Failed to create Vulkan instance (VkResult: {})", static_cast<int>(result));
+            RHIResult rhiResult = RHIResult::FromVkResult(result, "Failed to create Vulkan instance");
+            VYRA_LOG_CHANNEL(LogChannel::Renderer, error, "{}", rhiResult.GetMessage());
             return false;
         }
 

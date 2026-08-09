@@ -9,6 +9,8 @@ add_library(vyra_rhi STATIC
     src/vulkan/vulkan_swapchain.cpp
     src/vulkan/vulkan_resources.hpp
     src/vulkan/vulkan_resources.cpp
+    src/vulkan/vulkan_sync.hpp
+    src/vulkan/vulkan_sync.cpp
 )
 
 add_library(vyra::rhi ALIAS vyra_rhi)

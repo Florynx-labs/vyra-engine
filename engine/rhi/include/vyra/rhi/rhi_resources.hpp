@@ -7,6 +7,9 @@
 
 namespace vyra::rhi {
 
+    // Forward declaration
+    class RHIRenderPass;
+
     enum class BufferUsage : uint32_t {
         Vertex   = 0,
         Index    = 1,
@@ -37,8 +40,8 @@ namespace vyra::rhi {
         virtual void* GetNativeBuffer() const = 0;
         virtual uint64_t GetSize() const = 0;
 
-        static Scope<RHIBuffer> CreateVertex(void* device, const void* data, uint64_t size);
-        static Scope<RHIBuffer> CreateIndex(void* device, const void* data, uint64_t size);
+        static Scope<RHIBuffer> CreateVertex(void* device, void* physicalDevice, const void* data, uint64_t size);
+        static Scope<RHIBuffer> CreateIndex(void* device, void* physicalDevice, const void* data, uint64_t size);
     };
 
     // -----------------------------------------------------------------------
@@ -83,7 +86,7 @@ namespace vyra::rhi {
         RHIShader*                   FragmentShader{ nullptr };
         std::vector<VertexAttribute> VertexAttributes;
         uint32_t                     VertexStride{ 0 };
-        void*                        RenderPass{ nullptr }; // VkRenderPass
+        class RHIRenderPass*         RenderPass{ nullptr };
     };
 
     class VYRA_API RHIPipeline {

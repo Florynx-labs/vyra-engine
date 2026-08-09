@@ -4,9 +4,12 @@ add_library(vyra_scene STATIC
     include/vyra/scene/editor_camera.hpp
     include/vyra/scene/components.hpp
     include/vyra/scene/scene_serializer.hpp
+    include/vyra/scene/components_2d.hpp
+    include/vyra/scene/camera_2d.hpp
     src/scene.cpp
     src/editor_camera.cpp
     src/scene_serializer.cpp
+    src/camera_2d.cpp
 )
 
 add_library(vyra::scene ALIAS vyra_scene)

@@ -24,13 +24,13 @@ namespace vyra::renderer {
         // Upload vertex data via host-visible buffer
         uint64_t vertexSize = mesh.Vertices.size() * sizeof(Vertex3D);
         if (vertexSize > 0) {
-            gpuMesh->VertexBuffer = rhi::RHIBuffer::CreateVertex(device, mesh.Vertices.data(), vertexSize);
+            gpuMesh->VertexBuffer = rhi::RHIBuffer::CreateVertex(device, m_PhysicalDevice, mesh.Vertices.data(), vertexSize);
         }
 
         // Upload index data
         uint64_t indexSize = mesh.Indices.size() * sizeof(uint32_t);
         if (indexSize > 0) {
-            gpuMesh->IndexBuffer = rhi::RHIBuffer::CreateIndex(device, mesh.Indices.data(), indexSize);
+            gpuMesh->IndexBuffer = rhi::RHIBuffer::CreateIndex(device, m_PhysicalDevice, mesh.Indices.data(), indexSize);
         }
 
         VYRA_LOG_INFO("[MeshRenderer] Uploaded mesh '{0}': {1} vertices, {2} indices",

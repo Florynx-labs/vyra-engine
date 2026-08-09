@@ -62,24 +62,27 @@ namespace vyra::rhi {
         VkMemoryRequirements memReq;
         vkGetBufferMemoryRequirements(device, m_Buffer, &memReq);
 
-        // Note: For actual GPU-only buffers we need the physical device to find memory type.
-        // We use host-visible for simplicity here (will be upgraded to staging in full renderer).
+        // Find appropriate memory type using physical device
+        if (m_PhysicalDevice == VK_NULL_HANDLE) {
+            VYRA_LOG_ERROR("[VulkanBuffer] Physical device not set! Call SetPhysicalDevice() before Init().");
+            vkDestroyBuffer(device, m_Buffer, nullptr);
+            m_Buffer = VK_NULL_HANDLE;
+            return false;
+        }
+
+        VkMemoryPropertyFlags desiredFlags = ToVkMemoryFlags(info.Memory);
+        uint32_t memoryTypeIndex = FindMemoryType(m_PhysicalDevice, memReq.memoryTypeBits, desiredFlags);
+
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memReq.size;
-        allocInfo.memoryTypeIndex = 0; // Placeholder — caller should use staging pattern
-
-        // Try host-visible first (works for CPU-to-GPU)
-        // For device-local we'd need a separate staging buffer + copy command.
-        VkMemoryPropertyFlags desiredFlags = ToVkMemoryFlags(info.Memory);
-        // Since we don't have physical device stored here, default to host visible for now.
-        (void)desiredFlags;
-
-        // Fallback: just request host-visible + coherent memory
-        allocInfo.memoryTypeIndex = 0; // Will be properly resolved when physical device is stored
+        allocInfo.memoryTypeIndex = memoryTypeIndex;
 
         if (vkAllocateMemory(device, &allocInfo, nullptr, &m_Memory) != VK_SUCCESS) {
-            VYRA_LOG_ERROR("[VulkanBuffer] Failed to allocate device memory!");
+            VYRA_LOG_ERROR("[VulkanBuffer] Failed to allocate device memory (type: {0}, size: {1})!", 
+                          memoryTypeIndex, memReq.size);
+            vkDestroyBuffer(device, m_Buffer, nullptr);
+            m_Buffer = VK_NULL_HANDLE;
             return false;
         }
 
@@ -112,24 +115,30 @@ namespace vyra::rhi {
     // -----------------------------------------------------------------------
     // RHIBuffer factory
     // -----------------------------------------------------------------------
-    Scope<RHIBuffer> RHIBuffer::CreateVertex(void* device, const void* data, uint64_t size) {
+    Scope<RHIBuffer> RHIBuffer::CreateVertex(void* device, void* physicalDevice, const void* data, uint64_t size) {
         auto buffer = CreateScope<VulkanBuffer>();
+        buffer->SetPhysicalDevice(static_cast<VkPhysicalDevice>(physicalDevice));
+        
         BufferCreateInfo info;
         info.Size = size;
         info.Usage = BufferUsage::Staging; // host-visible for easy upload
         info.Memory = MemoryAccess::CPUToGPU;
+        
         if (buffer->Init(device, info)) {
             buffer->Upload(device, data, size);
         }
         return buffer;
     }
 
-    Scope<RHIBuffer> RHIBuffer::CreateIndex(void* device, const void* data, uint64_t size) {
+    Scope<RHIBuffer> RHIBuffer::CreateIndex(void* device, void* physicalDevice, const void* data, uint64_t size) {
         auto buffer = CreateScope<VulkanBuffer>();
+        buffer->SetPhysicalDevice(static_cast<VkPhysicalDevice>(physicalDevice));
+        
         BufferCreateInfo info;
         info.Size = size;
         info.Usage = BufferUsage::Staging;
         info.Memory = MemoryAccess::CPUToGPU;
+        
         if (buffer->Init(device, info)) {
             buffer->Upload(device, data, size);
         }

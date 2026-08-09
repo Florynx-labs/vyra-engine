@@ -103,7 +103,7 @@ namespace vyra::rhi {
         VkDevice logicalDevice = vkDevice.GetVkDevice();
         if (logicalDevice == VK_NULL_HANDLE) return;
 
-        vkDeviceWaitIdle(logicalDevice);
+        vkDevice.WaitIdle();
 
         for (auto& fence : m_InFlightFences)
             vkDestroyFence(logicalDevice, fence, nullptr);

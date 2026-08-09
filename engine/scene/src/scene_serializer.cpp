@@ -17,16 +17,38 @@ namespace vyra::scene {
         return json::array({ vec.x, vec.y, vec.z });
     }
 
+    static bool TryReadVector3(const json& j, glm::vec3& out) {
+        if (!j.is_array() || j.size() < 3) {
+            return false;
+        }
+
+        out = glm::vec3(j[0].get<float>(), j[1].get<float>(), j[2].get<float>());
+        return true;
+    }
+
     static glm::vec3 JSONToVector3(const json& j) {
-        return glm::vec3(j[0].get<float>(), j[1].get<float>(), j[2].get<float>());
+        glm::vec3 result(0.0f);
+        TryReadVector3(j, result);
+        return result;
+    }
+
+    static bool TryReadVector4(const json& j, glm::vec4& out) {
+        if (!j.is_array() || j.size() < 4) {
+            return false;
+        }
+
+        out = glm::vec4(j[0].get<float>(), j[1].get<float>(), j[2].get<float>(), j[3].get<float>());
+        return true;
+    }
+
+    static glm::vec4 JSONToVector4(const json& j) {
+        glm::vec4 result(1.0f);
+        TryReadVector4(j, result);
+        return result;
     }
 
     static json Vector4ToJSON(const glm::vec4& vec) {
         return json::array({ vec.x, vec.y, vec.z, vec.w });
-    }
-
-    static glm::vec4 JSONToVector4(const json& j) {
-        return glm::vec4(j[0].get<float>(), j[1].get<float>(), j[2].get<float>(), j[3].get<float>());
     }
 
     static json SerializeEntity(vyra::ecs::Entity entity) {
@@ -34,7 +56,7 @@ namespace vyra::scene {
 
         if (entity.HasComponent<TagComponent>()) {
             auto& tag = entity.GetComponent<TagComponent>();
-            entityJson["Entity"] = static_cast<uint64_t>(tag.ID);
+            entityJson["Entity"] = tag.ID.ToString();
             entityJson["TagComponent"] = {
                 { "Tag", tag.Tag }
             };
@@ -108,6 +130,7 @@ namespace vyra::scene {
 
     void SceneSerializer::Serialize(const std::string& filepath) {
         json root;
+        root["FormatVersion"] = 1;
         root["Scene"] = m_Scene->GetName();
         root["Entities"] = json::array();
 
@@ -146,6 +169,16 @@ namespace vyra::scene {
             return false;
         }
 
+        if (root.contains("FormatVersion")) {
+            const int version = root["FormatVersion"].get<int>();
+            if (version != 1) {
+                VYRA_LOG_ERROR("Unsupported scene format version '{0}' while deserializing '{1}'", version, filepath);
+                return false;
+            }
+        }
+
+        m_Scene->Clear();
+
         if (root.contains("Scene")) {
             m_Scene->SetName(root["Scene"].get<std::string>());
         }
@@ -155,20 +188,39 @@ namespace vyra::scene {
         }
 
         for (const auto& entityJson : root["Entities"]) {
-            uint64_t uuid = entityJson.value("Entity", static_cast<uint64_t>(0));
+            std::string uuidStr = entityJson.value("Entity", std::string(""));
+            UUID uuid = UUID::FromString(uuidStr);
             std::string name;
             if (entityJson.contains("TagComponent")) {
                 name = entityJson["TagComponent"].value("Tag", "Entity");
             }
 
-            vyra::ecs::Entity deserializedEntity = m_Scene->CreateEntityWithUUID(UUID(uuid), name);
+            vyra::ecs::EntityID entityID = m_Scene->GetRegistry().Create();
+            vyra::ecs::Entity deserializedEntity(entityID, &m_Scene->GetRegistry());
+            m_Scene->GetRegistry().Emplace<TagComponent>(entityID, name.empty() ? "Entity" : name, uuid);
+            m_Scene->GetRegistry().Emplace<TransformComponent>(entityID);
 
             if (entityJson.contains("TransformComponent")) {
                 auto& tc = deserializedEntity.GetComponent<TransformComponent>();
                 const auto& transformJ = entityJson["TransformComponent"];
-                if (transformJ.contains("Translation")) tc.Translation = JSONToVector3(transformJ["Translation"]);
-                if (transformJ.contains("Rotation")) tc.Rotation = JSONToVector3(transformJ["Rotation"]);
-                if (transformJ.contains("Scale")) tc.Scale = JSONToVector3(transformJ["Scale"]);
+                if (transformJ.contains("Translation")) {
+                    glm::vec3 translation(0.0f);
+                    if (TryReadVector3(transformJ["Translation"], translation)) {
+                        tc.Translation = translation;
+                    }
+                }
+                if (transformJ.contains("Rotation")) {
+                    glm::vec3 rotation(0.0f);
+                    if (TryReadVector3(transformJ["Rotation"], rotation)) {
+                        tc.Rotation = rotation;
+                    }
+                }
+                if (transformJ.contains("Scale")) {
+                    glm::vec3 scale(1.0f);
+                    if (TryReadVector3(transformJ["Scale"], scale)) {
+                        tc.Scale = scale;
+                    }
+                }
             }
 
             if (entityJson.contains("CameraComponent")) {
@@ -200,14 +252,24 @@ namespace vyra::scene {
                 const auto& meshJ = entityJson["MeshComponent"];
                 auto& mc = deserializedEntity.AddComponent<MeshComponent>();
                 mc.AssetPath = meshJ.value("AssetPath", "");
-                if (meshJ.contains("Color")) mc.Color = JSONToVector4(meshJ["Color"]);
+                if (meshJ.contains("Color")) {
+                    glm::vec4 color(1.0f);
+                    if (TryReadVector4(meshJ["Color"], color)) {
+                        mc.Color = color;
+                    }
+                }
                 mc.MaterialID = meshJ.value("MaterialID", static_cast<uint32_t>(0));
             }
 
             if (entityJson.contains("SpriteRendererComponent")) {
                 const auto& spriteJ = entityJson["SpriteRendererComponent"];
                 auto& src = deserializedEntity.AddComponent<SpriteRendererComponent>();
-                if (spriteJ.contains("Color")) src.Color = JSONToVector4(spriteJ["Color"]);
+                if (spriteJ.contains("Color")) {
+                    glm::vec4 color(1.0f);
+                    if (TryReadVector4(spriteJ["Color"], color)) {
+                        src.Color = color;
+                    }
+                }
                 src.TexturePath = spriteJ.value("TexturePath", "");
                 src.TilingFactor = spriteJ.value("TilingFactor", 1.0f);
             }

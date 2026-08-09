@@ -56,8 +56,9 @@ namespace vyra::scene {
     vyra::ecs::Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name) {
         vyra::ecs::EntityID id = m_Registry.Create();
         vyra::ecs::Entity entity(id, &m_Registry);
-        entity.AddComponent<TagComponent>(name.empty() ? "Entity" : name, uuid);
-        entity.AddComponent<TransformComponent>();
+
+        m_Registry.Emplace<TagComponent>(id, name.empty() ? "Entity" : name, uuid);
+        m_Registry.Emplace<TransformComponent>(id);
         return entity;
     }
 
@@ -65,6 +66,11 @@ namespace vyra::scene {
         if (entity) {
             m_Registry.Destroy(entity.GetID());
         }
+    }
+
+    void Scene::Clear() {
+        m_Registry.Clear();
+        VYRA_LOG_INFO("Cleared scene '{0}'", m_Name);
     }
 
     void Scene::OnUpdateRuntime(Timestep ts) {

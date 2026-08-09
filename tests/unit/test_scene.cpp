@@ -137,6 +137,36 @@ TEST_CASE("VYRA Scene - Deterministic JSON Serialization Roundtrip", "[scene]") 
     }
 }
 
+TEST_CASE("VYRA Scene - Deserialize Replaces Existing Scene Contents", "[scene]") {
+    std::string tempFilepath = "test_scene_replace.vyra";
+
+    {
+        vyra::Ref<vyra::scene::Scene> srcScene = vyra::CreateRef<vyra::scene::Scene>("Source Scene");
+        vyra::ecs::Entity entity = srcScene->CreateEntity("ImportedEntity");
+        entity.AddComponent<vyra::scene::MeshComponent>("assets/imported.gltf", glm::vec4(0.2f, 0.4f, 0.6f, 1.0f));
+
+        vyra::scene::SceneSerializer serializer(srcScene);
+        serializer.Serialize(tempFilepath);
+    }
+
+    vyra::Ref<vyra::scene::Scene> dstScene = vyra::CreateRef<vyra::scene::Scene>("Destination Scene");
+    vyra::ecs::Entity existingEntity = dstScene->CreateEntity("ExistingEntity");
+    existingEntity.AddComponent<vyra::scene::TransformComponent>();
+
+    vyra::scene::SceneSerializer deserializer(dstScene);
+    bool success = deserializer.Deserialize(tempFilepath);
+    REQUIRE(success);
+    REQUIRE(dstScene->GetRegistry().Size() == 1);
+    REQUIRE(dstScene->GetName() == "Source Scene");
+
+    vyra::ecs::Entity imported = dstScene->GetPrimaryCameraEntity();
+    REQUIRE(!imported);
+
+    if (std::filesystem::exists(tempFilepath)) {
+        std::filesystem::remove(tempFilepath);
+    }
+}
+
 TEST_CASE("VYRA Scene - Play Mode World Isolation & Entity Lifecycle", "[scene][playmode]") {
     vyra::Ref<vyra::scene::Scene> editorScene = vyra::CreateRef<vyra::scene::Scene>("Editor World");
 
