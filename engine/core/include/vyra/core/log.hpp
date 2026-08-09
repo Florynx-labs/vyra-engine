@@ -13,7 +13,10 @@ namespace vyra {
         Physics,
         Assets,
         Editor,
-        AI
+        AI,
+        Platform,
+        Scene,
+        Serialization
     };
 
     class VYRA_API Log {

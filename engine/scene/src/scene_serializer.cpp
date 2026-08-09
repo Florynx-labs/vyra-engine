@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <iomanip>
+#include <filesystem>
 
 namespace vyra::scene {
 
@@ -144,9 +145,9 @@ namespace vyra::scene {
         std::ofstream out(filepath);
         if (out.is_open()) {
             out << root.dump(4);
-            VYRA_LOG_INFO("Serialized scene '{0}' to '{1}'", m_Scene->GetName(), filepath);
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, info, "Serialized scene '{0}' to '{1}'", m_Scene->GetName(), filepath);
         } else {
-            VYRA_LOG_ERROR("Failed to open file '{0}' for writing scene serialization", filepath);
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Failed to open file '{0}' for writing scene serialization", filepath);
         }
     }
 
@@ -155,9 +156,14 @@ namespace vyra::scene {
     }
 
     bool SceneSerializer::Deserialize(const std::string& filepath) {
+        if (!std::filesystem::exists(filepath)) {
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Scene file does not exist: '{0}'", filepath);
+            return false;
+        }
+
         std::ifstream in(filepath);
         if (!in.is_open()) {
-            VYRA_LOG_ERROR("Failed to open file '{0}' for scene deserialization", filepath);
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Failed to open file '{0}' for scene deserialization", filepath);
             return false;
         }
 
@@ -165,14 +171,14 @@ namespace vyra::scene {
         try {
             in >> root;
         } catch (const std::exception& e) {
-            VYRA_LOG_ERROR("JSON parse error deserializing scene '{0}': {1}", filepath, e.what());
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "JSON parse error deserializing scene '{0}': {1}", filepath, e.what());
             return false;
         }
 
         if (root.contains("FormatVersion")) {
             const int version = root["FormatVersion"].get<int>();
             if (version != 1) {
-                VYRA_LOG_ERROR("Unsupported scene format version '{0}' while deserializing '{1}'", version, filepath);
+                VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Unsupported scene format version '{0}' while deserializing '{1}'", version, filepath);
                 return false;
             }
         }
@@ -184,7 +190,8 @@ namespace vyra::scene {
         }
 
         if (!root.contains("Entities") || !root["Entities"].is_array()) {
-            return true;
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, warn, "Scene file has no entities: '{0}'", filepath);
+            return true; // Not an error, just empty scene
         }
 
         for (const auto& entityJson : root["Entities"]) {
@@ -225,77 +232,73 @@ namespace vyra::scene {
 
             if (entityJson.contains("CameraComponent")) {
                 auto& cc = deserializedEntity.AddComponent<CameraComponent>();
-                const auto& camJ = entityJson["CameraComponent"];
-                cc.Primary = camJ.value("Primary", true);
-                cc.FixedAspectRatio = camJ.value("FixedAspectRatio", false);
-
-                if (camJ.contains("Camera")) {
-                    const auto& cProps = camJ["Camera"];
-                    int projType = cProps.value("ProjectionType", 0);
-                    if (projType == 0) {
-                        cc.Camera.SetPerspective(
-                            cProps.value("PerspectiveFOV", glm::radians(45.0f)),
-                            cProps.value("PerspectiveNear", 0.1f),
-                            cProps.value("PerspectiveFar", 1000.0f)
-                        );
-                    } else {
-                        cc.Camera.SetOrthographic(
-                            cProps.value("OrthographicSize", 10.0f),
-                            cProps.value("OrthographicNear", -1.0f),
-                            cProps.value("OrthographicFar", 1.0f)
-                        );
-                    }
+                const auto& cameraJ = entityJson["CameraComponent"];
+                const auto& cameraDataJ = cameraJ["Camera"];
+                
+                if (cameraDataJ.contains("ProjectionType")) {
+                    cc.Camera.SetProjectionType(static_cast<SceneCamera::ProjectionType>(cameraDataJ["ProjectionType"].get<int>()));
                 }
+                if (cameraDataJ.contains("PerspectiveFOV")) {
+                    cc.Camera.SetPerspectiveVerticalFOV(cameraDataJ["PerspectiveFOV"].get<float>());
+                }
+                if (cameraDataJ.contains("PerspectiveNear")) {
+                    cc.Camera.SetPerspectiveNearClip(cameraDataJ["PerspectiveNear"].get<float>());
+                }
+                if (cameraDataJ.contains("PerspectiveFar")) {
+                    cc.Camera.SetPerspectiveFarClip(cameraDataJ["PerspectiveFar"].get<float>());
+                }
+                if (cameraDataJ.contains("OrthographicSize")) {
+                    cc.Camera.SetOrthographicSize(cameraDataJ["OrthographicSize"].get<float>());
+                }
+                if (cameraDataJ.contains("OrthographicNear")) {
+                    cc.Camera.SetOrthographicNearClip(cameraDataJ["OrthographicNear"].get<float>());
+                }
+                if (cameraDataJ.contains("OrthographicFar")) {
+                    cc.Camera.SetOrthographicFarClip(cameraDataJ["OrthographicFar"].get<float>());
+                }
+                cc.Primary = cameraJ.value("Primary", true);
+                cc.FixedAspectRatio = cameraJ.value("FixedAspectRatio", false);
             }
 
             if (entityJson.contains("MeshComponent")) {
-                const auto& meshJ = entityJson["MeshComponent"];
                 auto& mc = deserializedEntity.AddComponent<MeshComponent>();
-                mc.AssetPath = meshJ.value("AssetPath", "");
-                if (meshJ.contains("Color")) {
-                    glm::vec4 color(1.0f);
-                    if (TryReadVector4(meshJ["Color"], color)) {
-                        mc.Color = color;
-                    }
+                mc.AssetPath = entityJson["MeshComponent"].value("AssetPath", std::string(""));
+                if (entityJson["MeshComponent"].contains("Color")) {
+                    mc.Color = JSONToVector4(entityJson["MeshComponent"]["Color"]);
                 }
-                mc.MaterialID = meshJ.value("MaterialID", static_cast<uint32_t>(0));
+                mc.MaterialID = entityJson["MeshComponent"].value("MaterialID", 0);
             }
 
             if (entityJson.contains("SpriteRendererComponent")) {
-                const auto& spriteJ = entityJson["SpriteRendererComponent"];
                 auto& src = deserializedEntity.AddComponent<SpriteRendererComponent>();
-                if (spriteJ.contains("Color")) {
-                    glm::vec4 color(1.0f);
-                    if (TryReadVector4(spriteJ["Color"], color)) {
-                        src.Color = color;
-                    }
+                if (entityJson["SpriteRendererComponent"].contains("Color")) {
+                    src.Color = JSONToVector4(entityJson["SpriteRendererComponent"]["Color"]);
                 }
-                src.TexturePath = spriteJ.value("TexturePath", "");
-                src.TilingFactor = spriteJ.value("TilingFactor", 1.0f);
+                src.TexturePath = entityJson["SpriteRendererComponent"].value("TexturePath", std::string(""));
+                src.TilingFactor = entityJson["SpriteRendererComponent"].value("TilingFactor", 1.0f);
             }
 
             if (entityJson.contains("DirectionalLightComponent")) {
-                const auto& lightJ = entityJson["DirectionalLightComponent"];
                 auto& dlc = deserializedEntity.AddComponent<DirectionalLightComponent>();
-                if (lightJ.contains("Color")) dlc.Color = JSONToVector3(lightJ["Color"]);
-                dlc.Intensity = lightJ.value("Intensity", 1.0f);
+                if (entityJson["DirectionalLightComponent"].contains("Color")) {
+                    dlc.Color = JSONToVector3(entityJson["DirectionalLightComponent"]["Color"]);
+                }
+                dlc.Intensity = entityJson["DirectionalLightComponent"].value("Intensity", 1.0f);
             }
 
             if (entityJson.contains("PointLightComponent")) {
-                const auto& lightJ = entityJson["PointLightComponent"];
                 auto& plc = deserializedEntity.AddComponent<PointLightComponent>();
-                if (lightJ.contains("Color")) plc.Color = JSONToVector3(lightJ["Color"]);
-                plc.Intensity = lightJ.value("Intensity", 1.0f);
-                plc.Radius = lightJ.value("Radius", 10.0f);
+                if (entityJson["PointLightComponent"].contains("Color")) {
+                    plc.Color = JSONToVector3(entityJson["PointLightComponent"]["Color"]);
+                }
+                plc.Intensity = entityJson["PointLightComponent"].value("Intensity", 1.0f);
+                plc.Radius = entityJson["PointLightComponent"].value("Radius", 10.0f);
             }
         }
 
-        VYRA_LOG_INFO("Deserialized scene '{0}' from '{1}' ({2} entities)", m_Scene->GetName(), filepath, m_Scene->GetRegistry().Size());
+        VYRA_LOG_CHANNEL(LogChannel::Serialization, info, "Deserialized scene '{0}' from '{1}' with {2} entities", 
+            m_Scene->GetName(), filepath, m_Scene->GetRegistry().Size());
         return true;
-    }
-
-    bool SceneSerializer::DeserializeRuntime(const std::string& filepath) {
-        return Deserialize(filepath);
     }
 
 } // namespace vyra::scene

@@ -83,16 +83,41 @@ namespace vyra::rhi {
         m_ImageFormat = surfaceFormat.format;
         m_Extent = extent;
 
+        // Store graphics queue family index for command pool creation
+        m_GraphicsQueueFamilyIndex = vkDevice.GetQueueFamilies().GraphicsFamily.value();
+
         vkGetSwapchainImagesKHR(logicalDevice, m_SwapChain, &imageCount, nullptr);
         m_Images.resize(imageCount);
         vkGetSwapchainImagesKHR(logicalDevice, m_SwapChain, &imageCount, m_Images.data());
 
         CreateImageViews(logicalDevice);
-        CreateRenderPass(logicalDevice);
+        
+        // Use RHI render pass abstraction
+        m_RenderPass = RHIRenderPass::Create();
+        if (m_RenderPass) {
+            vyra::rhi::RenderPassCreateInfo rpInfo{};
+            rpInfo.ColorAttachment.Format = static_cast<uint32_t>(m_ImageFormat);
+            rpInfo.ColorAttachment.Samples = 1;
+            rpInfo.ColorAttachment.LoadOp = 2; // VK_ATTACHMENT_LOAD_OP_CLEAR
+            rpInfo.ColorAttachment.StoreOp = 1; // VK_ATTACHMENT_STORE_OP_STORE
+            rpInfo.ColorAttachment.InitialLayout = 0; // VK_IMAGE_LAYOUT_UNDEFINED
+            rpInfo.ColorAttachment.FinalLayout = 5; // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+            
+            // Note: For simple swapchain, we don't need depth attachment
+            rpInfo.DepthAttachment.Format = 0; // VK_FORMAT_UNDEFINED
+            rpInfo.DepthAttachment.Samples = 1;
+            rpInfo.DepthAttachment.LoadOp = 0; // VK_ATTACHMENT_LOAD_OP_DONT_CARE
+            rpInfo.DepthAttachment.StoreOp = 0; // VK_ATTACHMENT_STORE_OP_DONT_CARE
+            
+            if (!m_RenderPass->Init(device, rpInfo)) {
+                VYRA_LOG_ERROR("[VulkanSwapChain] Failed to create render pass");
+                return false;
+            }
+        }
+        
         CreateFramebuffers(logicalDevice);
-        CreateCommandPool(vkDevice);
         CreateCommandBuffers(logicalDevice);
-        CreateSyncObjects(logicalDevice);
+        CreateSyncObjects(device);
 
         VYRA_LOG_CHANNEL(LogChannel::Renderer, info, "Vulkan swap chain created ({}x{}, {} images)", m_Extent.width, m_Extent.height, m_Images.size());
         return true;
@@ -105,48 +130,74 @@ namespace vyra::rhi {
 
         vkDevice.WaitIdle();
 
-        for (auto& fence : m_InFlightFences)
-            vkDestroyFence(logicalDevice, fence, nullptr);
-        for (auto& sem : m_RenderFinishedSemaphores)
-            vkDestroySemaphore(logicalDevice, sem, nullptr);
-        for (auto& sem : m_ImageAvailableSemaphores)
-            vkDestroySemaphore(logicalDevice, sem, nullptr);
+        // Destroy RHI synchronization objects first (proper order)
+        for (auto& fence : m_Fences) {
+            if (fence) fence->Shutdown(device);
+        }
+        m_Fences.clear();
 
-        if (m_CommandPool != VK_NULL_HANDLE)
-            vkDestroyCommandPool(logicalDevice, m_CommandPool, nullptr);
+        for (auto& sem : m_RenderFinishedSemaphores) {
+            if (sem) sem->Shutdown(device);
+        }
+        m_RenderFinishedSemaphores.clear();
 
-        for (auto fb : m_Framebuffers)
-            vkDestroyFramebuffer(logicalDevice, fb, nullptr);
+        for (auto& sem : m_ImageAvailableSemaphores) {
+            if (sem) sem->Shutdown(device);
+        }
+        m_ImageAvailableSemaphores.clear();
 
-        if (m_RenderPass != VK_NULL_HANDLE)
-            vkDestroyRenderPass(logicalDevice, m_RenderPass, nullptr);
+        // Destroy command pool
+        if (m_CommandPool) {
+            m_CommandPool->Shutdown(device);
+            m_CommandPool.reset();
+        }
 
-        for (auto iv : m_ImageViews)
-            vkDestroyImageView(logicalDevice, iv, nullptr);
-
-        if (m_SwapChain != VK_NULL_HANDLE)
-            vkDestroySwapchainKHR(logicalDevice, m_SwapChain, nullptr);
-
-        m_SwapChain = VK_NULL_HANDLE;
-        m_RenderPass = VK_NULL_HANDLE;
-        m_CommandPool = VK_NULL_HANDLE;
+        // Destroy framebuffers
+        for (auto fb : m_Framebuffers) {
+            if (fb != VK_NULL_HANDLE) {
+                vkDestroyFramebuffer(logicalDevice, fb, nullptr);
+            }
+        }
         m_Framebuffers.clear();
+
+        // Destroy render pass (RHI abstraction)
+        if (m_RenderPass) {
+            m_RenderPass->Shutdown(device);
+            m_RenderPass.reset();
+        }
+
+        // Destroy image views
+        for (auto iv : m_ImageViews) {
+            if (iv != VK_NULL_HANDLE) {
+                vkDestroyImageView(logicalDevice, iv, nullptr);
+            }
+        }
         m_ImageViews.clear();
+
+        // Destroy swapchain
+        if (m_SwapChain != VK_NULL_HANDLE) {
+            vkDestroySwapchainKHR(logicalDevice, m_SwapChain, nullptr);
+            m_SwapChain = VK_NULL_HANDLE;
+        }
+
         m_Images.clear();
         m_CommandBuffers.clear();
-        m_ImageAvailableSemaphores.clear();
-        m_RenderFinishedSemaphores.clear();
-        m_InFlightFences.clear();
     }
 
     bool VulkanSwapChain::AcquireNextImage(RHIDevice& device) {
         auto& vkDevice = static_cast<VulkanDevice&>(device);
         VkDevice logicalDevice = vkDevice.GetVkDevice();
 
-        vkWaitForFences(logicalDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+        if (m_Fences.empty() || !m_Fences[m_CurrentFrame]) {
+            VYRA_LOG_ERROR("[VulkanSwapChain] Fences not initialized");
+            return false;
+        }
+
+        m_Fences[m_CurrentFrame]->Wait(device, UINT64_MAX);
 
         VkResult result = vkAcquireNextImageKHR(logicalDevice, m_SwapChain, UINT64_MAX,
-            m_ImageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &m_ImageIndex);
+            static_cast<VkSemaphore>(m_ImageAvailableSemaphores[m_CurrentFrame]->GetNativeSemaphore()), 
+            VK_NULL_HANDLE, &m_ImageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             return false; // Signal recreation needed
@@ -158,7 +209,12 @@ namespace vyra::rhi {
         auto& vkDevice = static_cast<VulkanDevice&>(device);
         VkDevice logicalDevice = vkDevice.GetVkDevice();
 
-        vkResetFences(logicalDevice, 1, &m_InFlightFences[m_CurrentFrame]);
+        if (m_Fences.empty() || !m_Fences[m_CurrentFrame]) {
+            VYRA_LOG_ERROR("[VulkanSwapChain] Fences not initialized");
+            return;
+        }
+
+        m_Fences[m_CurrentFrame]->Reset(device);
 
         VkCommandBuffer cmd = m_CommandBuffers[m_CurrentFrame];
         vkResetCommandBuffer(cmd, 0);
@@ -169,7 +225,7 @@ namespace vyra::rhi {
 
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = m_RenderPass;
+        renderPassInfo.renderPass = static_cast<VkRenderPass>(m_RenderPass->GetNativeRenderPass());
         renderPassInfo.framebuffer = m_Framebuffers[m_ImageIndex];
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = m_Extent;
@@ -210,7 +266,9 @@ namespace vyra::rhi {
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
+        VkSemaphore waitSemaphores[] = { 
+            static_cast<VkSemaphore>(m_ImageAvailableSemaphores[m_CurrentFrame]->GetNativeSemaphore()) 
+        };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
@@ -218,11 +276,14 @@ namespace vyra::rhi {
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmd;
 
-        VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
+        VkSemaphore signalSemaphores[] = { 
+            static_cast<VkSemaphore>(m_RenderFinishedSemaphores[m_CurrentFrame]->GetNativeSemaphore()) 
+        };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        vkQueueSubmit(vkDevice.GetVkGraphicsQueue(), 1, &submitInfo, m_InFlightFences[m_CurrentFrame]);
+        vkQueueSubmit(vkDevice.GetVkGraphicsQueue(), 1, &submitInfo, 
+                     static_cast<VkFence>(m_Fences[m_CurrentFrame]->GetNativeFence()));
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -286,46 +347,6 @@ namespace vyra::rhi {
         }
     }
 
-    void VulkanSwapChain::CreateRenderPass(VkDevice device) {
-        VkAttachmentDescription colorAttachment{};
-        colorAttachment.format = m_ImageFormat;
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference colorRef{};
-        colorRef.attachment = 0;
-        colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorRef;
-
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_RenderPass);
-    }
-
     void VulkanSwapChain::CreateFramebuffers(VkDevice device) {
         m_Framebuffers.resize(m_ImageViews.size());
         for (size_t i = 0; i < m_ImageViews.size(); ++i) {
@@ -333,54 +354,68 @@ namespace vyra::rhi {
 
             VkFramebufferCreateInfo fbInfo{};
             fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            fbInfo.renderPass = m_RenderPass;
+            fbInfo.renderPass = static_cast<VkRenderPass>(m_RenderPass->GetNativeRenderPass());
             fbInfo.attachmentCount = 1;
             fbInfo.pAttachments = attachments;
             fbInfo.width = m_Extent.width;
             fbInfo.height = m_Extent.height;
             fbInfo.layers = 1;
 
-            vkCreateFramebuffer(device, &fbInfo, nullptr, &m_Framebuffers[i]);
+            VkResult result = vkCreateFramebuffer(device, &fbInfo, nullptr, &m_Framebuffers[i]);
+            if (result != VK_SUCCESS) {
+                VYRA_LOG_ERROR("[VulkanSwapChain] Failed to create framebuffer {}", i);
+                m_Framebuffers[i] = VK_NULL_HANDLE;
+            }
         }
-    }
-
-    void VulkanSwapChain::CreateCommandPool(VulkanDevice& device) {
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = device.GetQueueFamilies().GraphicsFamily.value();
-
-        vkCreateCommandPool(device.GetVkDevice(), &poolInfo, nullptr, &m_CommandPool);
     }
 
     void VulkanSwapChain::CreateCommandBuffers(VkDevice device) {
         m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
+        // Create command pool for swapchain
+        m_CommandPool = RHICommandPool::Create();
+        if (!m_CommandPool) {
+            VYRA_LOG_ERROR("[VulkanSwapChain] Failed to create command pool");
+            return;
+        }
+
+        if (!m_CommandPool->Init(device, m_GraphicsQueueFamilyIndex)) { 
+            VYRA_LOG_ERROR("[VulkanSwapChain] Failed to initialize command pool");
+            return;
+        }
+
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = m_CommandPool;
+        allocInfo.commandPool = static_cast<VkCommandPool>(m_CommandPool->GetNativeCommandPool());
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-        vkAllocateCommandBuffers(device, &allocInfo, m_CommandBuffers.data());
+        VkResult result = vkAllocateCommandBuffers(device, &allocInfo, m_CommandBuffers.data());
+        if (result != VK_SUCCESS) {
+            VYRA_LOG_ERROR("[VulkanSwapChain] Failed to allocate command buffers");
+            m_CommandBuffers.clear();
+        }
     }
 
-    void VulkanSwapChain::CreateSyncObjects(VkDevice device) {
+    void VulkanSwapChain::CreateSyncObjects(RHIDevice& device) {
         m_ImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
         m_RenderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        m_InFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        m_Fences.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]);
-            vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]);
-            vkCreateFence(device, &fenceInfo, nullptr, &m_InFlightFences[i]);
+            m_ImageAvailableSemaphores[i] = RHISemaphore::Create();
+            m_RenderFinishedSemaphores[i] = RHISemaphore::Create();
+            m_Fences[i] = RHIFence::Create();
+
+            if (!m_ImageAvailableSemaphores[i] || !m_ImageAvailableSemaphores[i]->Init(device)) {
+                VYRA_LOG_ERROR("[VulkanSwapChain] Failed to create image available semaphore {}", i);
+            }
+            if (!m_RenderFinishedSemaphores[i] || !m_RenderFinishedSemaphores[i]->Init(device)) {
+                VYRA_LOG_ERROR("[VulkanSwapChain] Failed to create render finished semaphore {}", i);
+            }
+            if (!m_Fences[i] || !m_Fences[i]->Init(device, true)) { // Signaled state
+                VYRA_LOG_ERROR("[VulkanSwapChain] Failed to create fence {}", i);
+            }
         }
     }
 

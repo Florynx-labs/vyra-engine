@@ -13,6 +13,9 @@ namespace vyra {
     Ref<spdlog::logger> Log::s_AssetsLogger;
     Ref<spdlog::logger> Log::s_EditorLogger;
     Ref<spdlog::logger> Log::s_AILogger;
+    Ref<spdlog::logger> Log::s_PlatformLogger;
+    Ref<spdlog::logger> Log::s_SceneLogger;
+    Ref<spdlog::logger> Log::s_SerializationLogger;
 
     void Log::Init() {
         std::vector<spdlog::sink_ptr> logSinks;
@@ -55,6 +58,18 @@ namespace vyra {
         s_AILogger = std::make_shared<spdlog::logger>("AI", begin(logSinks), end(logSinks));
         spdlog::register_logger(s_AILogger);
         s_AILogger->set_level(spdlog::level::trace);
+
+        s_PlatformLogger = std::make_shared<spdlog::logger>("PLATFORM", begin(logSinks), end(logSinks));
+        spdlog::register_logger(s_PlatformLogger);
+        s_PlatformLogger->set_level(spdlog::level::trace);
+
+        s_SceneLogger = std::make_shared<spdlog::logger>("SCENE", begin(logSinks), end(logSinks));
+        spdlog::register_logger(s_SceneLogger);
+        s_SceneLogger->set_level(spdlog::level::trace);
+
+        s_SerializationLogger = std::make_shared<spdlog::logger>("SERIALIZATION", begin(logSinks), end(logSinks));
+        spdlog::register_logger(s_SerializationLogger);
+        s_SerializationLogger->set_level(spdlog::level::trace);
     }
 
     void Log::Shutdown() {
@@ -66,14 +81,17 @@ namespace vyra {
             Init();
         }
         switch (channel) {
-            case LogChannel::Core:     return s_CoreLogger;
-            case LogChannel::Renderer: return s_RendererLogger;
-            case LogChannel::ECS:      return s_ECSLogger;
-            case LogChannel::Physics:  return s_PhysicsLogger;
-            case LogChannel::Assets:   return s_AssetsLogger;
-            case LogChannel::Editor:   return s_EditorLogger;
-            case LogChannel::AI:       return s_AILogger;
-            default:                   return s_CoreLogger;
+            case LogChannel::Core:         return s_CoreLogger;
+            case LogChannel::Renderer:      return s_RendererLogger;
+            case LogChannel::ECS:           return s_ECSLogger;
+            case LogChannel::Physics:       return s_PhysicsLogger;
+            case LogChannel::Assets:        return s_AssetsLogger;
+            case LogChannel::Editor:        return s_EditorLogger;
+            case LogChannel::AI:            return s_AILogger;
+            case LogChannel::Platform:      return s_PlatformLogger;
+            case LogChannel::Scene:         return s_SceneLogger;
+            case LogChannel::Serialization: return s_SerializationLogger;
+            default:                        return s_CoreLogger;
         }
     }
 

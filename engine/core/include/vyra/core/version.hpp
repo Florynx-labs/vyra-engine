@@ -7,22 +7,22 @@ namespace vyra {
 
     class VYRA_API Version {
     public:
-        static int GetMajor() { return VYRA_VERSION_MAJOR; }
-        static int GetMinor() { return VYRA_VERSION_MINOR; }
-        static int GetPatch() { return VYRA_VERSION_PATCH; }
+        static int GetMajor() { return 0; }
+        static int GetMinor() { return 1; }
+        static int GetPatch() { return 2; }
         
         static std::string ToString() {
-            return std::to_string(VYRA_VERSION_MAJOR) + "." + 
-                   std::to_string(VYRA_VERSION_MINOR) + "." + 
-                   std::to_string(VYRA_VERSION_PATCH);
+            return std::to_string(GetMajor()) + "." + 
+                   std::to_string(GetMinor()) + "." + 
+                   std::to_string(GetPatch());
         }
         
         static bool IsAtLeast(int major, int minor, int patch = 0) {
-            if (VYRA_VERSION_MAJOR > major) return true;
-            if (VYRA_VERSION_MAJOR < major) return false;
-            if (VYRA_VERSION_MINOR > minor) return true;
-            if (VYRA_VERSION_MINOR < minor) return false;
-            return VYRA_VERSION_PATCH >= patch;
+            if (GetMajor() > major) return true;
+            if (GetMajor() < major) return false;
+            if (GetMinor() > minor) return true;
+            if (GetMinor() < minor) return false;
+            return GetPatch() >= patch;
         }
     };
 
