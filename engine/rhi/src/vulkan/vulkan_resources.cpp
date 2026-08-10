@@ -1,7 +1,10 @@
 #define VK_NO_PROTOTYPES
 #include "vulkan_resources.hpp"
+#include "vulkan_device.hpp"
+#include "vulkan_sync.hpp"
 #include "vyra/core/log.hpp"
 #include <cstring>
+#include <array>
 
 namespace vyra::rhi {
 
@@ -298,7 +301,12 @@ namespace vyra::rhi {
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = m_PipelineLayout;
-        pipelineInfo.renderPass = static_cast<VkRenderPass>(info.RenderPass);
+        // info.RenderPass is void*, but it should be RHIRenderPass* cast to VkRenderPass
+        if (info.RenderPass) {
+            pipelineInfo.renderPass = static_cast<VkRenderPass>(static_cast<RHIRenderPass*>(info.RenderPass)->GetNativeRenderPass());
+        } else {
+            pipelineInfo.renderPass = VK_NULL_HANDLE;
+        }
         pipelineInfo.subpass = 0;
 
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline) != VK_SUCCESS) {

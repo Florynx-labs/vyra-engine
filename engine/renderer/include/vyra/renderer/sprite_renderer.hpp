@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vyra/core/base.hpp"
-#include "vyra/rhi/rhi.hpp"
 #include <glm/glm.hpp>
 #include <memory>
 
@@ -32,8 +31,8 @@ namespace vyra::renderer {
 
     // GPU resources for sprite batch
     struct SpriteBatch {
-        Scope<rhi::RHIBuffer> VertexBuffer;
-        Scope<rhi::RHIBuffer> IndexBuffer;
+        void* VertexBuffer{ nullptr };
+        void* IndexBuffer{ nullptr };
         uint32_t VertexCount{ 0 };
         uint32_t IndexCount{ 0 };
     };

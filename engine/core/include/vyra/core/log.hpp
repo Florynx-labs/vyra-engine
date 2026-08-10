@@ -43,6 +43,9 @@ namespace vyra {
         static Ref<spdlog::logger> s_AssetsLogger;
         static Ref<spdlog::logger> s_EditorLogger;
         static Ref<spdlog::logger> s_AILogger;
+        static Ref<spdlog::logger> s_PlatformLogger;
+        static Ref<spdlog::logger> s_SceneLogger;
+        static Ref<spdlog::logger> s_SerializationLogger;
     };
 
 } // namespace vyra

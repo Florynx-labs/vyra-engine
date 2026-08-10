@@ -116,7 +116,7 @@ namespace vyra::rhi {
         }
         
         CreateFramebuffers(logicalDevice);
-        CreateCommandBuffers(logicalDevice);
+        CreateCommandBuffers(vkDevice);
         CreateSyncObjects(device);
 
         VYRA_LOG_CHANNEL(LogChannel::Renderer, info, "Vulkan swap chain created ({}x{}, {} images)", m_Extent.width, m_Extent.height, m_Images.size());
@@ -369,7 +369,7 @@ namespace vyra::rhi {
         }
     }
 
-    void VulkanSwapChain::CreateCommandBuffers(VkDevice device) {
+    void VulkanSwapChain::CreateCommandBuffers(RHIDevice& device) {
         m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
         // Create command pool for swapchain
@@ -390,7 +390,8 @@ namespace vyra::rhi {
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-        VkResult result = vkAllocateCommandBuffers(device, &allocInfo, m_CommandBuffers.data());
+        VkDevice logicalDevice = static_cast<VulkanDevice&>(device).GetVkDevice();
+        VkResult result = vkAllocateCommandBuffers(logicalDevice, &allocInfo, m_CommandBuffers.data());
         if (result != VK_SUCCESS) {
             VYRA_LOG_ERROR("[VulkanSwapChain] Failed to allocate command buffers");
             m_CommandBuffers.clear();

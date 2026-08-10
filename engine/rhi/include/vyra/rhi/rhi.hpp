@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vyra/core/base.hpp"
+#include "vyra/rhi/rhi_resources.hpp"
 #include <cstdint>
 #include <string>
 #include <vector>

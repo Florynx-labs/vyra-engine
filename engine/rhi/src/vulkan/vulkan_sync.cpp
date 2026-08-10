@@ -3,6 +3,8 @@
 #include "vulkan_device.hpp"
 #include "vyra/core/log.hpp"
 
+#include <array>
+
 namespace vyra::rhi {
 
     // -----------------------------------------------------------------------

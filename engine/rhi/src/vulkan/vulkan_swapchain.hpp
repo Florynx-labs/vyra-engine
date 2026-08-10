@@ -49,12 +49,8 @@ namespace vyra::rhi {
 
         void CreateImageViews(VkDevice device);
         void CreateFramebuffers(VkDevice device);
-        void CreateCommandBuffers(VkDevice device);
+        void CreateCommandBuffers(RHIDevice& device);
         void CreateSyncObjects(RHIDevice& device);
-
-        // Validation helpers
-        bool ValidateHandle(VkHandle handle, const char* handleName) const;
-        void SafeDestroy(VkHandle handle, const char* handleName, VkDevice device);
 
         VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
         VkFormat m_ImageFormat;
