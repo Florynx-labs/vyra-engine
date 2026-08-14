@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(VYRA
-    VERSION 0.1.3
+    VERSION 0.1.4
     DESCRIPTION "Modern Open-Source Multiplatform C++23 Game Engine"
     HOMEPAGE_URL "https://github.com/florynx-labs/vyra-engine"
     LANGUAGES CXX C
@@ -24,6 +24,9 @@ add_subdirectory(engine/rhi)
 add_subdirectory(engine/renderer)
 add_subdirectory(engine/ecs)
 add_subdirectory(engine/scene)
+add_subdirectory(engine/asset)
+add_subdirectory(engine/profiler)
+add_subdirectory(engine/jobs)
 add_subdirectory(editor)
 
 if(VYRA_BUILD_TESTS)

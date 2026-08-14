@@ -11,6 +11,88 @@ namespace vyra::scene {
 
     using json = nlohmann::json;
 
+    // Current scene format version
+    static constexpr int CURRENT_FORMAT_VERSION = 2;
+
+    // Migration functions for different format versions
+    static bool MigrateFormatV1ToV2(json& root) {
+        // Migration from version 1 to version 2
+        // Example: Add new default fields or transform existing data
+        
+        if (!root.contains("Entities") || !root["Entities"].is_array()) {
+            return true; // Nothing to migrate
+        }
+        
+        for (auto& entityJson : root["Entities"]) {
+            // Example migration: Add missing component versions
+            if (entityJson.contains("TransformComponent")) {
+                entityJson["TransformComponent"]["__version"] = 1;
+            }
+            if (entityJson.contains("CameraComponent")) {
+                entityJson["CameraComponent"]["__version"] = 1;
+            }
+            // Add component versions for all components
+            if (entityJson.contains("MeshComponent")) {
+                entityJson["MeshComponent"]["__version"] = 1;
+            }
+            if (entityJson.contains("SpriteRendererComponent")) {
+                entityJson["SpriteRendererComponent"]["__version"] = 1;
+            }
+            if (entityJson.contains("DirectionalLightComponent")) {
+                entityJson["DirectionalLightComponent"]["__version"] = 1;
+            }
+            if (entityJson.contains("PointLightComponent")) {
+                entityJson["PointLightComponent"]["__version"] = 1;
+            }
+        }
+        
+        // Update format version
+        root["FormatVersion"] = 2;
+        
+        VYRA_LOG_CHANNEL(LogChannel::Serialization, info, "Migrated scene format from version 1 to version 2");
+        return true;
+    }
+    
+    static bool ApplyMigrations(json& root, int fromVersion, int toVersion) {
+        if (fromVersion >= toVersion) {
+            return true; // No migration needed
+        }
+        
+        // Apply migrations sequentially
+        for (int version = fromVersion; version < toVersion; version++) {
+            switch (version) {
+                case 1:
+                    if (!MigrateFormatV1ToV2(root)) {
+                        VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Failed to migrate from version {0} to {1}", version, version + 1);
+                        return false;
+                    }
+                    break;
+                default:
+                    VYRA_LOG_CHANNEL(LogChannel::Serialization, warn, "No migration defined for version {0} to {1}", version, version + 1);
+                    break;
+            }
+        }
+        
+        return true;
+    }
+    
+    static bool ValidateComponentVersion(const json& componentJson, int expectedVersion) {
+        if (!componentJson.contains("__version")) {
+            // Older format without versioning, assume version 1
+            return true;
+        }
+        
+        int componentVersion = componentJson["__version"].get<int>();
+        if (componentVersion > expectedVersion) {
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, warn, "Component version {0} is newer than expected {1}, attempting to load anyway", 
+                             componentVersion, expectedVersion);
+            // Try to load anyway - forward compatibility
+            return true;
+        }
+        
+        return componentVersion == expectedVersion;
+    }
+
     SceneSerializer::SceneSerializer(Ref<Scene> scene)
         : m_Scene(scene) {}
 
@@ -131,7 +213,7 @@ namespace vyra::scene {
 
     void SceneSerializer::Serialize(const std::string& filepath) {
         json root;
-        root["FormatVersion"] = 1;
+        root["FormatVersion"] = CURRENT_FORMAT_VERSION;
         root["Scene"] = m_Scene->GetName();
         root["Entities"] = json::array();
 
@@ -177,8 +259,27 @@ namespace vyra::scene {
 
         if (root.contains("FormatVersion")) {
             const int version = root["FormatVersion"].get<int>();
-            if (version != 1) {
-                VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Unsupported scene format version '{0}' while deserializing '{1}'", version, filepath);
+            if (version > CURRENT_FORMAT_VERSION) {
+                VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Scene format version '{0}' is newer than supported version '{1}' while deserializing '{2}'", 
+                                 version, CURRENT_FORMAT_VERSION, filepath);
+                return false;
+            }
+            
+            // Apply migrations if needed
+            if (version < CURRENT_FORMAT_VERSION) {
+                VYRA_LOG_CHANNEL(LogChannel::Serialization, info, "Migrating scene format from version {0} to {1}", version, CURRENT_FORMAT_VERSION);
+                if (!ApplyMigrations(root, version, CURRENT_FORMAT_VERSION)) {
+                    VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Failed to migrate scene format from version {0} to {1}", 
+                                     version, CURRENT_FORMAT_VERSION);
+                    return false;
+                }
+            }
+        } else {
+            // Old format without version, assume version 1
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, info, "Scene file has no format version, assuming version 1");
+            root["FormatVersion"] = 1;
+            if (!ApplyMigrations(root, 1, CURRENT_FORMAT_VERSION)) {
+                VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Failed to migrate old format to current version");
                 return false;
             }
         }
@@ -208,8 +309,14 @@ namespace vyra::scene {
             m_Scene->GetRegistry().Emplace<TransformComponent>(entityID);
 
             if (entityJson.contains("TransformComponent")) {
-                auto& tc = deserializedEntity.GetComponent<TransformComponent>();
                 const auto& transformJ = entityJson["TransformComponent"];
+                
+                // Validate component version
+                if (!ValidateComponentVersion(transformJ, 1)) {
+                    VYRA_LOG_CHANNEL(LogChannel::Serialization, warn, "TransformComponent version mismatch in entity '{0}'", name);
+                }
+                
+                auto& tc = deserializedEntity.GetComponent<TransformComponent>();
                 if (transformJ.contains("Translation")) {
                     glm::vec3 translation(0.0f);
                     if (TryReadVector3(transformJ["Translation"], translation)) {

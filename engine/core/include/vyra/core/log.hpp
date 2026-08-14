@@ -16,7 +16,8 @@ namespace vyra {
         AI,
         Platform,
         Scene,
-        Serialization
+        Serialization,
+        Profiler
     };
 
     class VYRA_API Log {
@@ -46,12 +47,14 @@ namespace vyra {
         static Ref<spdlog::logger> s_PlatformLogger;
         static Ref<spdlog::logger> s_SceneLogger;
         static Ref<spdlog::logger> s_SerializationLogger;
+        static Ref<spdlog::logger> s_ProfilerLogger;
     };
 
 } // namespace vyra
 
 // Core Logging Macros
 #define VYRA_LOG_TRACE(...)   ::vyra::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define VYRA_LOG_DEBUG(...)   ::vyra::Log::GetCoreLogger()->debug(__VA_ARGS__)
 #define VYRA_LOG_INFO(...)    ::vyra::Log::GetCoreLogger()->info(__VA_ARGS__)
 #define VYRA_LOG_WARN(...)    ::vyra::Log::GetCoreLogger()->warn(__VA_ARGS__)
 #define VYRA_LOG_ERROR(...)   ::vyra::Log::GetCoreLogger()->error(__VA_ARGS__)

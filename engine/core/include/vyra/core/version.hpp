@@ -9,7 +9,7 @@ namespace vyra {
     public:
         static int GetMajor() { return 0; }
         static int GetMinor() { return 1; }
-        static int GetPatch() { return 3; }
+        static int GetPatch() { return 4; }
         
         static std::string ToString() {
             return std::to_string(GetMajor()) + "." + 

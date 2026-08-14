@@ -16,6 +16,7 @@ namespace vyra {
     Ref<spdlog::logger> Log::s_PlatformLogger;
     Ref<spdlog::logger> Log::s_SceneLogger;
     Ref<spdlog::logger> Log::s_SerializationLogger;
+    Ref<spdlog::logger> Log::s_ProfilerLogger;
 
     void Log::Init() {
         std::vector<spdlog::sink_ptr> logSinks;
@@ -70,6 +71,10 @@ namespace vyra {
         s_SerializationLogger = std::make_shared<spdlog::logger>("SERIALIZATION", begin(logSinks), end(logSinks));
         spdlog::register_logger(s_SerializationLogger);
         s_SerializationLogger->set_level(spdlog::level::trace);
+
+        s_ProfilerLogger = std::make_shared<spdlog::logger>("PROFILER", begin(logSinks), end(logSinks));
+        spdlog::register_logger(s_ProfilerLogger);
+        s_ProfilerLogger->set_level(spdlog::level::trace);
     }
 
     void Log::Shutdown() {
@@ -91,6 +96,7 @@ namespace vyra {
             case LogChannel::Platform:      return s_PlatformLogger;
             case LogChannel::Scene:         return s_SceneLogger;
             case LogChannel::Serialization: return s_SerializationLogger;
+            case LogChannel::Profiler:      return s_ProfilerLogger;
             default:                        return s_CoreLogger;
         }
     }

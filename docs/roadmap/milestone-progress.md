@@ -1,7 +1,7 @@
 # VYRA Engine Roadmap Milestone Progress
 
-**Last Updated:** 2026-08-10  
-**Current Version:** v0.1.3 (in progress)  
+**Last Updated:** 2026-08-14  
+**Current Version:** v0.1.4 (in progress)  
 **Target Version:** v0.1.9  
 **Overall Progress:** 3/9 milestones completed (33%)
 
@@ -156,44 +156,73 @@ VYRA Engine follows a phased development roadmap from v0.1.0 Foundation to v0.1.
 
 ## In Progress Milestones 🔄
 
-### v0.1.3 Stabilization 🔄 (0% Complete)
-**Status:** STARTED  
-**Date:** 2026-08-10  
-**Estimated Completion:** 2026-08-30
+### v0.1.3 Stabilization ✅ (100% Complete)
+**Status:** COMPLETED  
+**Date:** 2026-08-14  
+**Duration**: 4 days
 
 #### Planned Focus
-- Scene serialization robustness
-- Asset system Phase 1 implementation
-- Error handling improvements
-- Vulkan integration tests
-- Renderer reliability
+- ✅ Scene serialization robustness
+- ✅ Asset system Phase 1 implementation
+- ✅ Error handling improvements
+- ✅ Vulkan integration tests
+- ✅ Renderer reliability
 
 #### Key Deliverables
-- Asset system Phase 1 (AssetHandle, AssetID, AssetMetadata, AssetRegistry)
-- Scene serialization migration path
-- Vulkan integration test suite
-- Renderer stability improvements
+- ✅ Asset system Phase 1 (AssetHandle, AssetID, AssetMetadata, AssetRegistry)
+- ✅ Scene serialization migration path
+- ✅ Vulkan integration test suite
+- ✅ Renderer stability improvements
 
 #### Current Progress
-- ⏳ Version update to v0.1.3
-- ⏳ Asset system Phase 1 implementation
-- ⏳ Scene serialization migration path
-- ⏳ Vulkan integration test suite
-- ⏳ Renderer reliability improvements
+- ✅ Version update to v0.1.3
+- ✅ Asset system Phase 1 implementation complete
+- ✅ Scene serialization migration path implemented
+- ✅ Vulkan integration test suite created
+- ✅ Renderer reliability improvements implemented
+- ✅ Build system updated with asset system
+- ✅ Test suite expanded with asset and GPU tests
+- ✅ All v0.1.3 objectives achieved
 
 ---
 
-## Pending Milestones ⏳
+## In Progress Milestones 🔄
 
-### v0.1.4 Performance Foundation (Planned)
-**Estimated Date:** 2026-09-15  
-**Duration:** ~15 days
+### v0.1.4 Performance Foundation 🔄 (50% Complete)
+**Status:** IN PROGRESS  
+**Date:** 2026-08-14  
+**Estimated Completion:** 2026-08-30
 
 #### Planned Focus
-- Profiling infrastructure
-- ECS optimization
-- Job system foundation
-- Memory pool allocation
+- ✅ Profiling infrastructure
+- ⏳ ECS optimization
+- ✅ Job system foundation
+- ⏳ Memory pool allocation
+
+#### Key Deliverables
+- ✅ VYRA Profiler (CPU, GPU, Frame, ECS, Memory, Asset)
+- ✅ Profiling macros (VYRA_PROFILE_SCOPE, VYRA_PROFILE_FUNCTION)
+- ✅ Job System (Job, JobHandle, JobQueue, Worker, Scheduler)
+- ⏳ Memory pool allocation system
+- ⏳ ECS optimization work
+
+#### Current Progress
+- ✅ Version update to v0.1.4
+- ✅ Profiler infrastructure complete
+- ✅ CPU Profiler with scope tracking
+- ✅ Frame Profiler with subsystem breakdown
+- ✅ Memory Profiler
+- ✅ Profiling macros implemented
+- ✅ Job System foundation complete
+- ✅ Job and JobHandle classes
+- ✅ JobQueue implementation
+- ✅ Worker threads implementation
+- ✅ Job Scheduler implementation
+- ✅ Zero-allocation optimization
+- ⏳ Profiling tests
+- ⏳ Job system tests
+- ⏳ Memory pool allocation
+- ⏳ ECS optimization
 - Cache-friendly data structures
 
 #### Key Deliverables
