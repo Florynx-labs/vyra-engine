@@ -90,12 +90,9 @@ void Worker::Join() {
 }
 
 void Worker::WorkerLoop() {
-    while (!m_shouldStop.load()) {
+    while (true) {
         auto job = m_queue.Pop();
-        if (!job) {
-            if (m_queue.ShouldStop()) break;
-            continue;
-        }
+        if (!job) break;
 
         job->status = JobStatus::Running;
         try {
