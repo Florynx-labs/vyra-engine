@@ -179,6 +179,10 @@ void JobScheduler::Shutdown() {
     if (m_queue) m_queue->Stop();
     for (auto& worker : m_workers) worker->Join();
     m_workers.clear();
+    {
+        std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
+        m_activeJobs.clear();
+    }
     m_queue.reset();
     m_workerCount = 0;
     m_initialized = false;
