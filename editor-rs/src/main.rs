@@ -95,7 +95,8 @@ impl Render for VyraEditor {
                             .gap_3()
                             .child(
                                 div()
-                                    .size(px(25.))
+                                    .w(px(25.))
+                                    .h(px(25.))
                                     .rounded_md()
                                     .bg(rgb(GREEN_DARK))
                                     .flex()
@@ -246,7 +247,8 @@ impl Render for VyraEditor {
                                                     .gap_3()
                                                     .child(
                                                         div()
-                                                            .size(px(104.))
+                                                            .w(px(104.))
+                .h(px(28.))
                                                             .rounded_lg()
                                                             .border_1()
                                                             .border_color(rgb(0x3b5945))
