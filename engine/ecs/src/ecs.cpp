@@ -3,15 +3,17 @@
 namespace vyra::ecs {
 
     EntityID Registry::Create() {
-        return m_Registry.create();
+        return m_State->NativeRegistry.create();
     }
 
     void Registry::Destroy(EntityID entity) {
-        m_Registry.destroy(entity);
+        if (m_State->NativeRegistry.valid(entity)) {
+            m_State->NativeRegistry.destroy(entity);
+        }
     }
 
     void Registry::Clear() {
-        m_Registry.clear();
+        m_State->NativeRegistry.clear();
     }
 
 } // namespace vyra::ecs
