@@ -34,7 +34,8 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
 - **Decoupled ECS**: EnTT backend encapsulated inside `vyra::ecs::Registry` and `vyra::ecs::Entity`.
 - **Procedural Geometry & Mesh Renderer**: Built-in 3D mesh primitives (Cube, Grid floor, Sphere) and GLSL hemisphere lighting shader pipeline.
 - **Deterministic Scene Serialization**: Human-readable `.vyra` JSON scene format with 128-bit UUID entity tracking.
-- **Obsidian Dark Editor Shell**: Dear ImGui docking interface with HSL-tuned obsidian dark styling.
+- **Legacy C++ Editor**: Dear ImGui docking interface retained during the transition.
+- **GPUI Editor Preview**: Standalone Rust editor shell with hierarchy, viewport workspace, inspector and console (experimental; see `editor-rs/`).
 - **Transient World Isolation**: Sandbox Play Mode cloning authoring scenes to isolated runtime worlds (`Edit`, `Play`, `Pause`).
 - **Catch2 test suite**: Unit and optional GPU integration tests covering core, platform, RHI, ECS, scene, assets, profiling and jobs. CI validation is tracked separately from test source coverage.
 
@@ -85,6 +86,7 @@ For detailed component documentation, see [Architecture Overview](docs/architect
 - [ADR 0003: Decoupled ECS Architecture](docs/adrs/0003-entt-ecs-wrapper.md)
 - [ADR 0004: JSON Scene Serialization](docs/adrs/0004-json-scene-serialization.md)
 - [ADR 0005: Transient World Isolation](docs/adrs/0005-transient-world-isolation.md)
+- [ADR 0006: GPUI Editor Frontend](docs/adrs/0006-gpui-editor-frontend.md)
 
 ---
 
@@ -113,6 +115,16 @@ ctest --test-dir build --output-on-failure -C Debug
 ```
 
 ---
+
+### GPUI Editor Preview
+
+The experimental GPUI shell can be launched independently of the C++ editor:
+
+```bash
+cargo run --manifest-path editor-rs/Cargo.toml
+```
+
+It currently provides the editor workspace UI only. The live engine bridge and Vulkan viewport integration are planned follow-up milestones. See [editor-rs/README.md](editor-rs/README.md).
 
 ## License
 
