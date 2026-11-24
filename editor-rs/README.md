@@ -1,6 +1,6 @@
 # VYRA Editor (GPUI)
 
-This crate is the first standalone GPUI-based editor shell for VYRA Engine.
+This crate is the first standalone GPUI-based editor shell for VYRA Engine. It tracks upstream Zed GPUI at the exact revision recorded in `Cargo.toml`.
 
 ## Run
 
