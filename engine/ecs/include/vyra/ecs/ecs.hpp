@@ -65,11 +65,14 @@ namespace vyra::ecs {
         EntityID Create();
         void Destroy(EntityID entity);
         void Clear();
-        // Reserve entity storage up front to avoid repeated growth during scene loading.
-        void Reserve(size_t capacity) { m_State->NativeRegistry.reserve(capacity); }
+
+        // EnTT exposes capacity management on the entity storage, not on registry.
+        void Reserve(size_t capacity) {
+            m_State->NativeRegistry.storage<entt::entity>().reserve(capacity);
+        }
+
         size_t Capacity() const {
-            const auto* storage = m_State->NativeRegistry.storage<entt::entity>();
-            return storage ? storage->capacity() : 0;
+            return m_State->NativeRegistry.storage<entt::entity>().capacity();
         }
 
         template<typename T, typename... Args>
@@ -127,8 +130,7 @@ namespace vyra::ecs {
         }
 
         size_t Size() const {
-            auto storage = m_State->NativeRegistry.storage<entt::entity>();
-            return storage ? storage->in_use() : 0;
+            return m_State->NativeRegistry.storage<entt::entity>().in_use();
         }
 
         entt::registry& GetNativeRegistry() { return m_State->NativeRegistry; }
