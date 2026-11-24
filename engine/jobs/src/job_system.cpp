@@ -54,7 +54,7 @@ size_t JobQueue::Size() const {
 void JobQueue::Stop() {
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_shouldStop = true;
+        m_queue.Stop();
     }
     m_condition.notify_all();
 }
@@ -76,7 +76,6 @@ Worker::~Worker() {
 
 void Worker::Start() {
     if (m_running.exchange(true)) return;
-    m_shouldStop = false;
     m_thread = std::thread(&Worker::WorkerLoop, this);
 }
 
