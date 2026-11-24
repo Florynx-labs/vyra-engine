@@ -2,6 +2,7 @@
 #include "vyra/core/log.hpp"
 #include <algorithm>
 #include <exception>
+#include <stdexcept>
 
 namespace vyra::jobs {
 
