@@ -43,4 +43,3 @@ desktop.ini
 
 # Rust GPUI editor artifacts
 /editor-rs/target/
-/editor-rs/Cargo.lock
