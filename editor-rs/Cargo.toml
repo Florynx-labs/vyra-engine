@@ -6,5 +6,6 @@ publish = false
 description = "GPUI-based editor shell for VYRA Engine"
 
 [dependencies]
-gpui = "=0.2.2"
-gpui_platform = { version = "=0.2.2", features = ["font-kit", "wayland", "x11"] }
+# Keep both crates on the exact same upstream Zed revision.
+gpui = { git = "https://github.com/zed-industries/zed", rev = "f98c2c100d217ace3ca99564cfc4573612d43d47" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "f98c2c100d217ace3ca99564cfc4573612d43d47", features = ["font-kit", "wayland", "x11"] }
