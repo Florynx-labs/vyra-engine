@@ -21,9 +21,9 @@
 
 ## Overview
 
-**VYRA Engine** is a modern, open-source, multiplatform C++23 game engine designed from its architectural foundation for extreme performance, strict layer decoupling, modern Vulkan 1.4 rendering, and native agentic AI workflows.
+**VYRA Engine** is a modern, open-source, multiplatform C++23 game engine designed around performance, strict layer decoupling, modern Vulkan 1.4 rendering, and extensible tooling.
 
-Developed under **Florynx Labs**, VYRA provides a high-performance alternative engine built for engineers who value architectural elegance, low-latency execution, with a roadmap focused on measurable performance and correctness.
+Developed under **Florynx Labs**, VYRA provides a high-performance alternative engine built for engineers who value architectural elegance, low-latency execution, and a roadmap focused on measurable performance and correctness.
 
 ---
 
