@@ -105,3 +105,17 @@ TEST_CASE("VYRA ECS - Destroyed entity handles become invalid", "[ecs][lifetime]
     registry.Destroy(id);
     REQUIRE_FALSE(static_cast<bool>(entity));
 }
+
+
+TEST_CASE("VYRA ECS - Entity storage capacity reservation", "[ecs][capacity]") {
+    vyra::ecs::Registry registry;
+
+    registry.Reserve(128);
+
+    REQUIRE(registry.Capacity() >= 128);
+    REQUIRE(registry.Size() == 0);
+
+    const auto entity = registry.Create();
+    REQUIRE(registry.Size() == 1);
+    REQUIRE(static_cast<entt::entity>(entity) != entt::null);
+}
