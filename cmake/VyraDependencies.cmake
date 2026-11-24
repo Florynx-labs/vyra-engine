@@ -34,7 +34,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 message(STATUS "[VYRA Dependencies] Configuring SDL3...")
 FetchContent_Declare(
     SDL3
-    URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.2.8.zip
+    URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.20.zip
 )
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
