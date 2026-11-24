@@ -95,11 +95,12 @@ public:
 private:
     void AddBlock() {
         auto block = std::make_unique<Slot[]>(BlockSize);
-        for (std::size_t index = 0; index < BlockSize; ++index) {
-            block[index].next = m_freeList;
-            m_freeList = &block[index];
-        }
+        Slot* slots = block.get();
         m_blocks.push_back(std::move(block));
+        for (std::size_t index = 0; index < BlockSize; ++index) {
+            slots[index].next = m_freeList;
+            m_freeList = &slots[index];
+        }
     }
 
     mutable std::mutex m_mutex;
