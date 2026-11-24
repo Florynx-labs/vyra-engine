@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <new>
@@ -55,8 +56,8 @@ public:
     bool Destroy(T* object) noexcept {
         if (!object) return false;
         std::lock_guard<std::mutex> lock(m_mutex);
-        auto* slot = reinterpret_cast<Slot*>(object);
-        if (!slot->occupied) return false;
+        Slot* slot = FindSlot(object);
+        if (!slot || !slot->occupied) return false;
 
         std::destroy_at(object);
         slot->occupied = false;
@@ -93,6 +94,22 @@ public:
     }
 
 private:
+    Slot* FindSlot(T* object) const noexcept {
+        const auto address = reinterpret_cast<std::uintptr_t>(object);
+        for (const auto& block : m_blocks) {
+            const auto begin = reinterpret_cast<std::uintptr_t>(block.get());
+            const auto bytes = sizeof(Slot) * BlockSize;
+            if (address >= begin && address < begin + bytes) {
+                const auto offset = address - begin;
+                if (offset % sizeof(Slot) == 0) {
+                    return &block[offset / sizeof(Slot)];
+                }
+                return nullptr;
+            }
+        }
+        return nullptr;
+    }
+
     void AddBlock() {
         auto block = std::make_unique<Slot[]>(BlockSize);
         Slot* slots = block.get();
