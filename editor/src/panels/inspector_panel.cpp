@@ -5,7 +5,18 @@
 #include <imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <algorithm>
+#include <cstring>
+
 namespace vyra::editor {
+
+    template<std::size_t N>
+    static void CopyToBuffer(char (&buffer)[N], const std::string& value) {
+        static_assert(N > 0, "The destination buffer must not be empty.");
+        const std::size_t length = std::min(value.size(), N - 1);
+        std::memcpy(buffer, value.data(), length);
+        buffer[length] = '\\0';
+    }
 
     static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 100.0f) {
         ImGuiIO& io = ImGui::GetIO();
@@ -119,8 +130,7 @@ namespace vyra::editor {
             auto& tag = entity.GetComponent<vyra::scene::TagComponent>().Tag;
 
             char buffer[256];
-            memset(buffer, 0, sizeof(buffer));
-            strncpy_s(buffer, tag.c_str(), sizeof(buffer));
+            CopyToBuffer(buffer, tag);
             if (ImGui::InputText("##Tag", buffer, sizeof(buffer))) {
                 tag = std::string(buffer);
             }
@@ -209,8 +219,7 @@ namespace vyra::editor {
 
         DrawComponentNode<vyra::scene::MeshComponent>("Mesh Component", entity, [](auto& component) {
             char pathBuf[256];
-            memset(pathBuf, 0, sizeof(pathBuf));
-            strncpy_s(pathBuf, component.AssetPath.c_str(), sizeof(pathBuf));
+            CopyToBuffer(pathBuf, component.AssetPath);
             if (ImGui::InputText("Asset Path", pathBuf, sizeof(pathBuf))) {
                 component.AssetPath = std::string(pathBuf);
             }
