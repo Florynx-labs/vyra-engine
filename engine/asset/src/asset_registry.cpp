@@ -23,7 +23,7 @@ AssetHandle AssetRegistry::RegisterAsset(const AssetID& assetId,
     auto it = idToHandle_.find(assetId);
     if (it != idToHandle_.end()) {
         AssetHandle existingHandle = it->second;
-        if (IsValidHandle(existingHandle)) {
+        if (IsValidHandleUnlocked(existingHandle)) {
             VYRA_LOG_CHANNEL(LogChannel::Assets, warn, "Asset already registered: {}", assetId.ToString());
             return existingHandle;
         }
@@ -56,7 +56,7 @@ AssetHandle AssetRegistry::RegisterAsset(const AssetID& assetId,
 bool AssetRegistry::UnregisterAsset(AssetHandle handle) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(handle)) {
+    if (!IsValidHandleUnlocked(handle)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, warn, "Attempted to unregister invalid handle: {}", handle.ToUint64());
         return false;
     }
@@ -84,7 +84,7 @@ bool AssetRegistry::UnregisterAsset(AssetHandle handle) {
 AssetMetadata* AssetRegistry::GetMetadata(AssetHandle handle) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(handle)) {
+    if (!IsValidHandleUnlocked(handle)) {
         return nullptr;
     }
     
@@ -94,7 +94,7 @@ AssetMetadata* AssetRegistry::GetMetadata(AssetHandle handle) {
 const AssetMetadata* AssetRegistry::GetMetadata(AssetHandle handle) const {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(handle)) {
+    if (!IsValidHandleUnlocked(handle)) {
         return nullptr;
     }
     
@@ -103,53 +103,50 @@ const AssetMetadata* AssetRegistry::GetMetadata(AssetHandle handle) const {
 
 AssetMetadata* AssetRegistry::GetMetadata(const AssetID& assetId) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    auto it = idToHandle_.find(assetId);
-    if (it == idToHandle_.end()) {
+
+    const auto it = idToHandle_.find(assetId);
+    if (it == idToHandle_.end() || !IsValidHandleUnlocked(it->second)) {
         return nullptr;
     }
-    
-    return GetMetadata(it->second);
+
+    return &assetEntries_[it->second.GetIndex()].metadata;
 }
 
 const AssetMetadata* AssetRegistry::GetMetadata(const AssetID& assetId) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    auto it = idToHandle_.find(assetId);
-    if (it == idToHandle_.end()) {
+
+    const auto it = idToHandle_.find(assetId);
+    if (it == idToHandle_.end() || !IsValidHandleUnlocked(it->second)) {
         return nullptr;
     }
-    
-    return GetMetadata(it->second);
+
+    return &assetEntries_[it->second.GetIndex()].metadata;
 }
 
 bool AssetRegistry::LoadAsset(AssetHandle handle) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    if (!IsValidHandle(handle)) {
+    return LoadAssetUnlocked(handle);
+}
+
+bool AssetRegistry::LoadAssetUnlocked(AssetHandle handle) {
+    if (!IsValidHandleUnlocked(handle)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to load invalid handle: {}", handle.ToUint64());
         return false;
     }
-    
-    AssetEntry& entry = assetEntries_[handle.GetIndex()];
-    AssetMetadata* metadata = &entry.metadata;
-    
+
+    AssetMetadata* metadata = &assetEntries_[handle.GetIndex()].metadata;
     if (metadata->IsLoaded()) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, debug, "Asset already loaded: {}", metadata->GetAssetID().ToString());
         return true;
     }
-    
+
     if (metadata->IsLoading()) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, warn, "Asset already loading: {}", metadata->GetAssetID().ToString());
         return false;
     }
-    
-    // Set status to loading
+
     metadata->SetStatus(AssetLoadStatus::Loading);
-    
-    // Call load function
-    bool success = CallLoadFunction(metadata);
-    
+    const bool success = CallLoadFunction(metadata);
     if (success) {
         metadata->SetStatus(AssetLoadStatus::Loaded);
         metadata->UpdateAccessTime();
@@ -158,31 +155,14 @@ bool AssetRegistry::LoadAsset(AssetHandle handle) {
         metadata->SetStatus(AssetLoadStatus::Failed);
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Asset failed to load: {}", metadata->GetAssetID().ToString());
     }
-    
-    return success;
-}
 
-AssetHandle AssetRegistry::LoadAsset(const AssetID& assetId) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    
-    auto it = idToHandle_.find(assetId);
-    if (it == idToHandle_.end()) {
-        VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Asset not registered: {}", assetId.ToString());
-        return AssetHandle::Invalid();
-    }
-    
-    AssetHandle handle = it->second;
-    if (LoadAsset(handle)) {
-        return handle;
-    }
-    
-    return AssetHandle::Invalid();
+    return success;
 }
 
 bool AssetRegistry::UnloadAsset(AssetHandle handle) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(handle)) {
+    if (!IsValidHandleUnlocked(handle)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to unload invalid handle: {}", handle.ToUint64());
         return false;
     }
@@ -223,7 +203,7 @@ bool AssetRegistry::UnloadAsset(AssetHandle handle) {
 bool AssetRegistry::AddReference(AssetHandle handle) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(handle)) {
+    if (!IsValidHandleUnlocked(handle)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to add reference to invalid handle: {}", handle.ToUint64());
         return false;
     }
@@ -241,7 +221,7 @@ bool AssetRegistry::AddReference(AssetHandle handle) {
 bool AssetRegistry::RemoveReference(AssetHandle handle) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(handle)) {
+    if (!IsValidHandleUnlocked(handle)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to remove reference from invalid handle: {}", handle.ToUint64());
         return false;
     }
@@ -267,7 +247,7 @@ bool AssetRegistry::RemoveReference(AssetHandle handle) {
 bool AssetRegistry::AddDependency(AssetHandle dependent, AssetHandle dependency, bool required) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(dependent) || !IsValidHandle(dependency)) {
+    if (!IsValidHandleUnlocked(dependent) || !IsValidHandleUnlocked(dependency)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to add dependency with invalid handles");
         return false;
     }
@@ -293,7 +273,7 @@ bool AssetRegistry::AddDependency(AssetHandle dependent, AssetHandle dependency,
 bool AssetRegistry::RemoveDependency(AssetHandle dependent, AssetHandle dependency) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!IsValidHandle(dependent) || !IsValidHandle(dependency)) {
+    if (!IsValidHandleUnlocked(dependent) || !IsValidHandleUnlocked(dependency)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to remove dependency with invalid handles");
         return false;
     }
@@ -311,17 +291,21 @@ bool AssetRegistry::RemoveDependency(AssetHandle dependent, AssetHandle dependen
 }
 
 bool AssetRegistry::IsValidHandle(AssetHandle handle) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return IsValidHandleUnlocked(handle);
+}
+
+bool AssetRegistry::IsValidHandleUnlocked(AssetHandle handle) const {
     if (!handle.IsValid()) {
         return false;
     }
-    
-    AssetHandle::IndexType index = handle.GetIndex();
+
+    const AssetHandle::IndexType index = handle.GetIndex();
     if (index >= assetEntries_.size()) {
         return false;
     }
-    
-    const AssetEntry& entry = assetEntries_[index];
-    return handle.MatchesGeneration(entry.currentGeneration);
+
+    return handle.MatchesGeneration(assetEntries_[index].currentGeneration);
 }
 
 std::vector<AssetHandle> AssetRegistry::GetAssetsByType(AssetType type) const {
@@ -330,7 +314,7 @@ std::vector<AssetHandle> AssetRegistry::GetAssetsByType(AssetType type) const {
     std::vector<AssetHandle> handles;
     
     for (const auto& pair : idToHandle_) {
-        if (pair.first.GetType() == type && IsValidHandle(pair.second)) {
+        if (pair.first.GetType() == type && IsValidHandleUnlocked(pair.second)) {
             handles.push_back(pair.second);
         }
     }

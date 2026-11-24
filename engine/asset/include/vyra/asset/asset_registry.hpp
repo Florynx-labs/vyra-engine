@@ -240,6 +240,10 @@ private:
     /**
      * @brief Allocate a new handle
      */
+    // Internal helpers require mutex_ to be held by the caller.
+    bool IsValidHandleUnlocked(AssetHandle handle) const;
+    bool LoadAssetUnlocked(AssetHandle handle);
+
     AssetHandle AllocateHandle();
     
     /**
