@@ -1,0 +1,10 @@
+[package]
+name = "vyra-editor"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "GPUI-based editor shell for VYRA Engine"
+
+[dependencies]
+gpui = "=0.2.2"
+gpui_platform = { version = "=0.2.2", features = ["font-kit", "wayland", "x11"] }
