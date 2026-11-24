@@ -209,7 +209,17 @@ JobHandle JobScheduler::Schedule(JobFunction function, JobPriority priority) {
     }
 
     m_outstanding.fetch_add(1, std::memory_order_release);
-    if (!m_queue->Push(job)) {
+    bool queued = false;
+    try {
+        queued = m_queue->Push(job);
+    } catch (...) {
+        m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
+        std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
+        m_activeJobs.erase(handle.GetId());
+        throw;
+    }
+
+    if (!queued) {
         m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
         std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
         m_activeJobs.erase(handle.GetId());
