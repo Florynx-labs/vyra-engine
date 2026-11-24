@@ -11,6 +11,7 @@
 #include <entt/entt.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <tuple>
 
@@ -20,6 +21,8 @@ namespace vyra::ecs {
     constexpr EntityID NullEntity = entt::null;
 
     class Registry;
+    class Entity;
+    struct RegistryState { entt::registry NativeRegistry; };
 
     // --- Core ECS Components ---
     struct VYRA_API TagComponent {
@@ -52,60 +55,64 @@ namespace vyra::ecs {
     public:
         Registry() = default;
         ~Registry() = default;
+        Registry(const Registry&) = delete;
+        Registry& operator=(const Registry&) = delete;
+        Registry(Registry&&) = delete;
+        Registry& operator=(Registry&&) = delete;
 
         EntityID Create();
         void Destroy(EntityID entity);
         void Clear();
         // Reserve entity storage up front to avoid repeated growth during scene loading.
-        void Reserve(size_t capacity) { m_Registry.reserve(capacity); }
+        void Reserve(size_t capacity) { m_State->NativeRegistry.reserve(capacity); }
         size_t Capacity() const {
-            const auto* storage = m_Registry.storage<entt::entity>();
+            const auto* storage = m_State->NativeRegistry.storage<entt::entity>();
             return storage ? storage->capacity() : 0;
         }
 
         template<typename T, typename... Args>
         T& Emplace(EntityID entity, Args&&... args) {
-            return m_Registry.emplace<T>(entity, std::forward<Args>(args)...);
+            return m_State->NativeRegistry.emplace<T>(entity, std::forward<Args>(args)...);
         }
 
         template<typename T, typename... Args>
         T& Replace(EntityID entity, Args&&... args) {
-            return m_Registry.replace<T>(entity, std::forward<Args>(args)...);
+            return m_State->NativeRegistry.replace<T>(entity, std::forward<Args>(args)...);
         }
 
         template<typename T, typename... Args>
         T& EmplaceOrReplace(EntityID entity, Args&&... args) {
-            return m_Registry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+            return m_State->NativeRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
         }
 
         template<typename T>
         bool Has(EntityID entity) const {
-            return m_Registry.all_of<T>(entity);
+            return m_State->NativeRegistry.all_of<T>(entity);
         }
 
         template<typename T>
         T& Get(EntityID entity) {
-            return m_Registry.get<T>(entity);
+            return m_State->NativeRegistry.get<T>(entity);
         }
 
         template<typename T>
         const T& Get(EntityID entity) const {
-            return m_Registry.get<T>(entity);
+            return m_State->NativeRegistry.get<T>(entity);
         }
 
         template<typename T>
         T* TryGet(EntityID entity) {
-            return m_Registry.try_get<T>(entity);
+            return m_State->NativeRegistry.try_get<T>(entity);
         }
 
         template<typename T>
         void Remove(EntityID entity) {
-            m_Registry.remove<T>(entity);
+            m_State->NativeRegistry.remove<T>(entity);
         }
 
         template<typename... Components, typename Func>
         void Each(Func&& func) {
-            auto view = m_Registry.view<Components...>();
+            auto view = m_State->NativeRegistry.view<Components...>();
             for (auto entity : view) {
                 if constexpr (sizeof...(Components) == 1) {
                     func(entity, view.template get<Components...>(entity));
@@ -118,15 +125,16 @@ namespace vyra::ecs {
         }
 
         size_t Size() const {
-            auto storage = m_Registry.storage<entt::entity>();
+            auto storage = m_State->NativeRegistry.storage<entt::entity>();
             return storage ? storage->in_use() : 0;
         }
 
-        entt::registry& GetNativeRegistry() { return m_Registry; }
-        const entt::registry& GetNativeRegistry() const { return m_Registry; }
+        entt::registry& GetNativeRegistry() { return m_State->NativeRegistry; }
+        const entt::registry& GetNativeRegistry() const { return m_State->NativeRegistry; }
 
     private:
-        entt::registry m_Registry;
+        friend class Entity;
+        std::shared_ptr<RegistryState> m_State{ std::make_shared<RegistryState>() };
     };
 
     // --- Entity Handle Wrapper ---
@@ -134,42 +142,42 @@ namespace vyra::ecs {
     public:
         Entity() = default;
         Entity(EntityID handle, Registry* registry)
-            : m_EntityHandle(handle), m_Registry(registry) {}
+            : m_EntityHandle(handle), m_State(registry ? registry->m_State : nullptr) {}
 
         template<typename T, typename... Args>
         T& AddComponent(Args&&... args) {
-            return m_Registry->Emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+            return m_State->NativeRegistry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
         }
 
         template<typename T>
         T& GetComponent() {
-            return m_Registry->Get<T>(m_EntityHandle);
+            return m_State->NativeRegistry.get<T>(m_EntityHandle);
         }
 
         template<typename T>
         const T& GetComponent() const {
-            return m_Registry->Get<T>(m_EntityHandle);
+            return m_State->NativeRegistry.get<T>(m_EntityHandle);
         }
 
         template<typename T>
         bool HasComponent() const {
-            return m_Registry->Has<T>(m_EntityHandle);
+            return m_State->NativeRegistry.all_of<T>(m_EntityHandle);
         }
 
         template<typename T>
         void RemoveComponent() {
-            m_Registry->Remove<T>(m_EntityHandle);
+            m_State->NativeRegistry.remove<T>(m_EntityHandle);
         }
 
         bool operator==(const Entity& other) const {
-            return m_EntityHandle == other.m_EntityHandle && m_Registry == other.m_Registry;
+            return m_EntityHandle == other.m_EntityHandle && m_State->NativeRegistry == other.m_State->NativeRegistry;
         }
         bool operator!=(const Entity& other) const {
             return !(*this == other);
         }
 
         operator bool() const {
-            return m_EntityHandle != NullEntity && m_Registry != nullptr && m_Registry->GetNativeRegistry().valid(m_EntityHandle);
+            return m_EntityHandle != NullEntity && m_State != nullptr && m_State->NativeRegistry.valid(m_EntityHandle);
         }
         operator EntityID() const { return m_EntityHandle; }
 
@@ -179,7 +187,7 @@ namespace vyra::ecs {
 
     private:
         EntityID m_EntityHandle{ NullEntity };
-        Registry* m_Registry{ nullptr };
+        std::shared_ptr<RegistryState> m_State;
     };
 
 } // namespace vyra::ecs
