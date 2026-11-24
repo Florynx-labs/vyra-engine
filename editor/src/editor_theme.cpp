@@ -88,17 +88,17 @@ namespace vyra::editor {
 
         colors[ImGuiCol_Tab]                   = bgPanel;
         colors[ImGuiCol_TabHovered]            = bgHover;
-        colors[ImGuiCol_TabActive]             = bgHeader;
-        colors[ImGuiCol_TabUnfocused]          = bgDark;
-        colors[ImGuiCol_TabUnfocusedActive]    = bgPanel;
+        colors[ImGuiCol_TabSelected]           = bgHeader;
+        colors[ImGuiCol_TabDimmed]             = bgDark;
+        colors[ImGuiCol_TabDimmedSelected]     = bgPanel;
 
         colors[ImGuiCol_DockingPreview]        = ImVec4(0.00f, 0.75f, 1.00f, 0.30f);
         colors[ImGuiCol_DockingEmptyBg]        = bgDark;
 
         colors[ImGuiCol_PlotLines]             = accentPrimary;
         colors[ImGuiCol_PlotLinesHovered]      = accentHover;
-        colors[ImGuiCol_PlotHistogram]        = accentPrimary;
-        colors[ImGuiCol_PlotHistogramHovered]   = accentHover;
+        colors[ImGuiCol_PlotHistogram]         = accentPrimary;
+        colors[ImGuiCol_PlotHistogramHovered]  = accentHover;
 
         colors[ImGuiCol_TableHeaderBg]         = bgHeader;
         colors[ImGuiCol_TableBorderStrong]     = border;
