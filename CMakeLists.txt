@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(VYRA_BUILD_TESTS "Build VYRA unit test suite" ON)
 option(VYRA_BUILD_SAMPLES "Build VYRA sample applications" ON)
+option(VYRA_BUILD_GPU_TESTS "Build GPU integration tests (requires a Vulkan runtime)" ON)
 
 include(cmake/VyraCompilerFlags.cmake)
 include(cmake/VyraDependencies.cmake)

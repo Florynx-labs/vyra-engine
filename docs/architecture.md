@@ -38,6 +38,8 @@ VYRA Engine is engineered with a strict layered architecture designed for long-t
 
 ## Layer Responsibilities
 
+The current implementation also includes `vyra::asset`, `vyra::profiler`, and `vyra::jobs`. These modules are foundational and their validation status is tracked in the [milestone roadmap](roadmap/milestone-progress.md).
+
 ### 1. `vyra::core`
 - Primitive types, `Ref<T>` / `Scope<T>` smart pointers.
 - Structured logging system based on `spdlog` (`VYRA_LOG_*`).
@@ -70,7 +72,15 @@ VYRA Engine is engineered with a strict layered architecture designed for long-t
 - JSON scene serialization & deserialization (`SceneSerializer`).
 - Isolated scene cloning for Play Mode state sandboxing (`Scene::Copy`).
 
-### 7. `vyra::editor`
+### 8. `vyra::profiler` and `vyra::jobs`
+- CPU scope/frame and memory accounting profiler; GPU timing remains a future Vulkan-query integration.
+- Worker-thread job scheduler with explicit completion handles and graceful queue draining.
+- Fixed-size, stable-address `vyra::core::ObjectPool<T>` for frequently reused objects.
+
+### 9. `vyra::asset`
+- Asset identifiers, generation-aware handles, metadata and registry foundations.
+
+### 10. `vyra::editor`
 - Professional Obsidian Dark UI theme styled for engineering workflows.
 - Dockable interface panels (`ViewportPanel`, `HierarchyPanel`, `InspectorPanel`, `ConsolePanel`).
 - State machine toolbar for Edit / Play / Pause simulation control.

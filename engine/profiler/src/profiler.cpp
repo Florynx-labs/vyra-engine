@@ -1,19 +1,14 @@
 #include "vyra/profiler/profiler.hpp"
 #include "vyra/core/log.hpp"
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
-namespace vyra {
-namespace profiler {
+namespace vyra::profiler {
 
 Profiler& Profiler::GetInstance() {
     static Profiler instance;
     return instance;
-}
-
-Profiler::Profiler()
-    : m_enabled(false), m_frameNumber(0) {
 }
 
 Profiler::~Profiler() {
@@ -21,63 +16,58 @@ Profiler::~Profiler() {
 }
 
 void Profiler::Init() {
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_frameNumber = 0;
+        m_currentFrame = FrameProfile{};
+        m_memoryProfile = MemoryProfile{};
+        m_frameStartTime = std::chrono::steady_clock::now();
+    }
     m_enabled = true;
-    m_frameNumber = 0;
-    m_frameStartTime = std::chrono::high_resolution_clock::now();
-    
     VYRA_LOG_CHANNEL(LogChannel::Profiler, info, "Profiler initialized");
 }
 
 void Profiler::Shutdown() {
     m_enabled = false;
-    VYRA_LOG_CHANNEL(LogChannel::Profiler, info, "Profiler shut down");
 }
 
 void Profiler::BeginFrame() {
-    if (!m_enabled) return;
-    
+    if (!m_enabled.load()) return;
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    m_frameStartTime = std::chrono::high_resolution_clock::now();
-    m_currentFrame = FrameProfile();
+    m_frameStartTime = std::chrono::steady_clock::now();
+    m_currentFrame = FrameProfile{};
     m_currentFrame.frameNumber = m_frameNumber.fetch_add(1);
 }
 
 void Profiler::EndFrame() {
-    if (!m_enabled) return;
-    
+    if (!m_enabled.load()) return;
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    auto frameEndTime = std::chrono::high_resolution_clock::now();
-    auto frameDuration = std::chrono::duration_cast<std::chrono::microseconds>(
-        frameEndTime - m_frameStartTime);
-    m_currentFrame.frameTimeMs = frameDuration.count() / 1000.0;
-    
-    UpdateFrameStatistics();
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        end - m_frameStartTime);
+    m_currentFrame.frameTimeMs = static_cast<double>(elapsed.count()) / 1000.0;
     CalculatePercentages();
 }
 
 void Profiler::RegisterScope(const std::string& name, ProfileCategory category) {
-    if (!m_enabled) return;
-    
+    if (!m_enabled.load()) return;
     std::lock_guard<std::mutex> lock(m_mutex);
     m_scopeCategories[name] = category;
 }
 
 void Profiler::RecordScope(const std::string& name, uint64_t durationUs) {
-    if (!m_enabled) return;
-    
+    if (!m_enabled.load()) return;
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    auto& stats = m_currentFrame.scopes[name];
-    stats.Update(durationUs);
+    m_currentFrame.scopes[name].Update(durationUs);
 }
 
-const FrameProfile& Profiler::GetCurrentFrame() const {
+FrameProfile Profiler::GetCurrentFrame() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_currentFrame;
 }
 
-const MemoryProfile& Profiler::GetMemoryProfile() const {
+MemoryProfile Profiler::GetMemoryProfile() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_memoryProfile;
 }
 
@@ -86,102 +76,90 @@ void Profiler::SetEnabled(bool enabled) {
 }
 
 bool Profiler::IsEnabled() const {
-    return m_enabled;
+    return m_enabled.load();
 }
 
 void Profiler::Reset() {
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    m_currentFrame = FrameProfile();
-    m_memoryProfile = MemoryProfile();
+    m_currentFrame = FrameProfile{};
+    m_memoryProfile = MemoryProfile{};
     m_frameNumber = 0;
     m_scopeCategories.clear();
+    m_frameStartTime = std::chrono::steady_clock::now();
 }
 
 std::string Profiler::GetFrameProfileString() const {
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(2);
-    ss << "Frame " << m_currentFrame.frameNumber << " - " << m_currentFrame.frameTimeMs << " ms\n";
-    ss << std::string(40, '-') << "\n";
-    
-    // Sort scopes by duration
-    std::vector<std::pair<std::string, ProfileStatistics>> sortedScopes;
-    for (const auto& [name, stats] : m_currentFrame.scopes) {
-        sortedScopes.push_back({name, stats});
+    std::stringstream stream;
+    stream << std::fixed << std::setprecision(2)
+           << "Frame " << m_currentFrame.frameNumber << " - "
+           << m_currentFrame.frameTimeMs << " ms\n"
+           << std::string(40, '-') << "\n";
+
+    std::vector<std::pair<std::string, ProfileStatistics>> scopes(
+        m_currentFrame.scopes.begin(), m_currentFrame.scopes.end());
+    std::sort(scopes.begin(), scopes.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.second.totalDurationUs > rhs.second.totalDurationUs;
+    });
+
+    for (const auto& [name, stats] : scopes) {
+        stream << std::left << std::setw(20) << name << " "
+               << std::right << std::setw(8)
+               << (static_cast<double>(stats.totalDurationUs) / 1000.0)
+               << " ms (" << std::setw(5) << std::setprecision(1)
+               << stats.percentage << "%)\n";
     }
-    
-    std::sort(sortedScopes.begin(), sortedScopes.end(),
-        [](const auto& a, const auto& b) {
-            return a.second.totalDurationUs > b.second.totalDurationUs;
-        });
-    
-    for (const auto& [name, stats] : sortedScopes) {
-        double durationMs = stats.totalDurationUs / 1000.0;
-        ss << std::left << std::setw(20) << name << " " 
-           << std::right << std::setw(8) << durationMs << " ms "
-           << "(" << std::setw(5) << std::fixed << std::setprecision(1) 
-           << stats.percentage << "%)\n";
-    }
-    
-    return ss.str();
+    return stream.str();
 }
 
 void Profiler::RecordAllocation(size_t size) {
-    if (!m_enabled) return;
-    
+    if (!m_enabled.load()) return;
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    m_memoryProfile.totalAllocated += size;
-    m_memoryProfile.currentUsage += size;
-    m_memoryProfile.allocationCount++;
-    
-    if (m_memoryProfile.currentUsage > m_memoryProfile.peakUsage) {
-        m_memoryProfile.peakUsage = m_memoryProfile.currentUsage;
-    }
+    const auto bytes = static_cast<uint64_t>(size);
+    m_memoryProfile.totalAllocated += bytes;
+    m_memoryProfile.currentUsage += bytes;
+    ++m_memoryProfile.allocationCount;
+    m_memoryProfile.peakUsage = std::max(m_memoryProfile.peakUsage,
+                                         m_memoryProfile.currentUsage);
 }
 
 void Profiler::RecordFree(size_t size) {
-    if (!m_enabled) return;
-    
+    if (!m_enabled.load()) return;
     std::lock_guard<std::mutex> lock(m_mutex);
-    
-    m_memoryProfile.totalFreed += size;
-    m_memoryProfile.currentUsage -= size;
-    m_memoryProfile.freeCount++;
-}
-
-void Profiler::UpdateFrameStatistics() {
-    // Statistics are already updated in RecordScope
+    const auto bytes = static_cast<uint64_t>(size);
+    // Clamp invalid accounting instead of allowing unsigned underflow.
+    const auto released = std::min(bytes, m_memoryProfile.currentUsage);
+    m_memoryProfile.totalFreed += released;
+    m_memoryProfile.currentUsage -= released;
+    ++m_memoryProfile.freeCount;
+    if (released != bytes) {
+        VYRA_LOG_CHANNEL(LogChannel::Profiler, warn,
+                         "Profiler ignored an unmatched free of {0} bytes", bytes - released);
+    }
 }
 
 void Profiler::CalculatePercentages() {
-    if (m_currentFrame.frameTimeMs > 0.0) {
-        uint64_t frameTimeUs = static_cast<uint64_t>(m_currentFrame.frameTimeMs * 1000.0);
-        
-        for (auto& [name, stats] : m_currentFrame.scopes) {
-            stats.percentage = (stats.totalDurationUs * 100.0) / frameTimeUs;
-        }
+    const auto frameTimeUs = m_currentFrame.frameTimeMs * 1000.0;
+    if (frameTimeUs <= 0.0) return;
+    for (auto& [name, stats] : m_currentFrame.scopes) {
+        (void)name;
+        stats.percentage =
+            (static_cast<double>(stats.totalDurationUs) * 100.0) / frameTimeUs;
     }
 }
 
 ProfileScopeRAII::ProfileScopeRAII(const std::string& name, ProfileCategory category)
-    : m_name(name), m_category(category) {
-    m_start = std::chrono::high_resolution_clock::now();
-    
-    if (Profiler::GetInstance().IsEnabled()) {
-        Profiler::GetInstance().RegisterScope(name, category);
-    }
+    : m_name(name), m_start(std::chrono::steady_clock::now()) {
+    auto& profiler = Profiler::GetInstance();
+    if (profiler.IsEnabled()) profiler.RegisterScope(name, category);
 }
 
 ProfileScopeRAII::~ProfileScopeRAII() {
-    if (Profiler::GetInstance().IsEnabled()) {
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - m_start);
-        Profiler::GetInstance().RecordScope(m_name, duration.count());
-    }
+    auto& profiler = Profiler::GetInstance();
+    if (!profiler.IsEnabled()) return;
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - m_start);
+    profiler.RecordScope(m_name, static_cast<uint64_t>(elapsed.count()));
 }
 
-} // namespace profiler
-} // namespace vyra
+} // namespace vyra::profiler

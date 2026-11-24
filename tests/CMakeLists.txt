@@ -8,6 +8,7 @@ add_executable(vyra_tests
     unit/test_asset.cpp
     unit/test_profiler.cpp
     unit/test_jobs.cpp
+    unit/test_memory_pool.cpp
 )
 
 target_link_libraries(vyra_tests
@@ -28,20 +29,21 @@ vyra_apply_compiler_flags(vyra_tests)
 
 catch_discover_tests(vyra_tests)
 
-# GPU Integration Tests (require GPU and Vulkan driver)
-add_executable(vyra_gpu_tests
-    gpu/test_vulkan_smoke.cpp
-    gpu/test_vulkan_integration.cpp
-)
+# GPU integration tests require a Vulkan-capable runtime and are optional in headless CI.
+if(VYRA_BUILD_GPU_TESTS)
+    add_executable(vyra_gpu_tests
+        gpu/test_vulkan_smoke.cpp
+        gpu/test_vulkan_integration.cpp
+    )
 
-target_link_libraries(vyra_gpu_tests
-    PRIVATE
-        vyra_core
-        vyra_rhi
-        vyra_asset
-        Catch2::Catch2WithMain
-)
+    target_link_libraries(vyra_gpu_tests
+        PRIVATE
+            vyra_core
+            vyra_rhi
+            vyra_asset
+            Catch2::Catch2WithMain
+    )
 
-vyra_apply_compiler_flags(vyra_gpu_tests)
-
-catch_discover_tests(vyra_gpu_tests)
+    vyra_apply_compiler_flags(vyra_gpu_tests)
+    catch_discover_tests(vyra_gpu_tests)
+endif()

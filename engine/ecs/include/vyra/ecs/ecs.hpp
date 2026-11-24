@@ -56,6 +56,12 @@ namespace vyra::ecs {
         EntityID Create();
         void Destroy(EntityID entity);
         void Clear();
+        // Reserve entity storage up front to avoid repeated growth during scene loading.
+        void Reserve(size_t capacity) { m_Registry.reserve(capacity); }
+        size_t Capacity() const {
+            const auto* storage = m_Registry.storage<entt::entity>();
+            return storage ? storage->capacity() : 0;
+        }
 
         template<typename T, typename... Args>
         T& Emplace(EntityID entity, Args&&... args) {

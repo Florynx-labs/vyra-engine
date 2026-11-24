@@ -1,62 +1,44 @@
 #include "vyra/jobs/job_system.hpp"
 #include "vyra/core/log.hpp"
 #include <algorithm>
-#include <chrono>
+#include <exception>
+#include <stdexcept>
 
-namespace vyra {
-namespace jobs {
+namespace vyra::jobs {
 
-// JobHandle implementation
 std::atomic<uint64_t> JobHandle::s_nextId{1};
 
-JobHandle::JobHandle() : m_id(0) {}
-
 JobHandle::JobHandle(uint64_t id) : m_id(id) {
-    if (id == 0) {
-        m_id = s_nextId.fetch_add(1);
-    }
+    if (id == 0) return;
+    uint64_t expected = s_nextId.load(std::memory_order_relaxed);
+    while (expected <= id &&
+           !s_nextId.compare_exchange_weak(expected, id + 1,
+                                           std::memory_order_relaxed)) {}
 }
 
-// JobQueue implementation
-JobQueue::JobQueue() {}
-
-JobQueue::~JobQueue() {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    while (!m_queue.empty()) {
-        m_queue.pop();
-    }
+JobHandle JobHandle::Generate() {
+    return JobHandle(s_nextId.fetch_add(1, std::memory_order_relaxed));
 }
 
-void JobQueue::Push(std::shared_ptr<Job> job) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_queue.push(job);
+bool JobQueue::Push(std::shared_ptr<Job> job) {
+    if (!job) return false;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_shouldStop) return false;
+        m_queue.push(std::move(job));
+    }
     m_condition.notify_one();
+    return true;
 }
 
 std::shared_ptr<Job> JobQueue::Pop() {
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_condition.wait_for(lock, std::chrono::milliseconds(100), [this] { 
-        return !m_queue.empty() || m_shouldStop; 
-    });
-    
-    if (m_shouldStop || m_queue.empty()) {
-        return nullptr;
-    }
-    
-    auto job = m_queue.front();
+    m_condition.wait(lock, [this] { return m_shouldStop || !m_queue.empty(); });
+    // Drain queued work before workers exit during shutdown.
+    if (m_queue.empty()) return nullptr;
+    auto job = std::move(m_queue.front());
     m_queue.pop();
     return job;
-}
-
-bool JobQueue::ShouldStop() const {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return m_shouldStop;
-}
-
-void JobQueue::Stop() {
-    m_shouldStop = true;
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_condition.notify_all();
 }
 
 bool JobQueue::Empty() const {
@@ -69,9 +51,23 @@ size_t JobQueue::Size() const {
     return m_queue.size();
 }
 
-// Worker implementation
-Worker::Worker(uint32_t id, JobQueue& queue)
-    : m_id(id), m_queue(queue), m_running(false), m_shouldStop(false) {}
+void JobQueue::Stop() {
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_shouldStop = true;
+    }
+    m_condition.notify_all();
+}
+
+bool JobQueue::ShouldStop() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_shouldStop;
+}
+
+Worker::Worker(uint32_t id, JobQueue& queue, std::atomic<size_t>& outstanding,
+               std::condition_variable& completionCondition, std::mutex& completionMutex)
+    : m_id(id), m_queue(queue), m_outstanding(outstanding),
+      m_completionCondition(completionCondition), m_completionMutex(completionMutex) {}
 
 Worker::~Worker() {
     Stop();
@@ -79,61 +75,53 @@ Worker::~Worker() {
 }
 
 void Worker::Start() {
-    if (m_running) return;
-    
-    m_running = true;
-    m_shouldStop = false;
+    if (m_running.exchange(true)) return;
     m_thread = std::thread(&Worker::WorkerLoop, this);
-    
-    VYRA_LOG_CHANNEL(LogChannel::Core, info, "Worker {0} started", m_id);
 }
 
 void Worker::Stop() {
-    m_shouldStop = true;
+    m_queue.Stop();
 }
 
 void Worker::Join() {
-    if (m_thread.joinable()) {
-        m_thread.join();
-        m_running = false;
-    }
+    if (m_thread.joinable()) m_thread.join();
+    m_running = false;
 }
 
 void Worker::WorkerLoop() {
-    while (!m_shouldStop && !m_queue.ShouldStop()) {
+    while (true) {
+        auto job = m_queue.Pop();
+        if (!job) break;
+
+        job->status = JobStatus::Running;
         try {
-            auto job = m_queue.Pop();
-            
-            if (m_queue.ShouldStop()) {
-                break;
+            if (!job->function) throw std::invalid_argument("Scheduled job has no function");
+            job->function();
+            job->status = JobStatus::Completed;
+            job->completionPromise.set_value();
+        } catch (...) {
+            job->status = JobStatus::Failed;
+            try { job->completionPromise.set_exception(std::current_exception()); } catch (...) {}
+            try {
+                throw;
+            } catch (const std::exception& error) {
+                VYRA_LOG_CHANNEL(LogChannel::Core, error, "Job {0} failed: {1}",
+                                 job->handle.GetId(), error.what());
+            } catch (...) {
+                VYRA_LOG_CHANNEL(LogChannel::Core, error,
+                                 "Job {0} failed with a non-standard exception",
+                                 job->handle.GetId());
             }
-            
-            if (job) {
-                job->status = JobStatus::Running;
-                
-                try {
-                    job->function();
-                    job->status = JobStatus::Completed;
-                    job->completionPromise.set_value();
-                } catch (const std::exception& e) {
-                    job->status = JobStatus::Failed;
-                    job->completionPromise.set_exception(std::current_exception());
-                    VYRA_LOG_CHANNEL(LogChannel::Core, error, "Job {0} failed: {1}", 
-                                     job->handle.GetId(), e.what());
-                }
-            }
-        } catch (const std::exception& e) {
-            VYRA_LOG_CHANNEL(LogChannel::Core, error, "Worker {0} error: {1}", m_id, e.what());
         }
+
+        {
+            // Pair predicate updates with the wait mutex to prevent lost wakeups.
+            std::lock_guard<std::mutex> completionLock(m_completionMutex);
+            m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
+        }
+        m_completionCondition.notify_all();
     }
-}
-
-// JobScheduler implementation
-JobScheduler::JobScheduler()
-    : m_initialized(false), m_workerCount(0) {}
-
-JobScheduler::~JobScheduler() {
-    Shutdown();
+    m_running = false;
 }
 
 JobScheduler& JobScheduler::GetInstance() {
@@ -141,139 +129,136 @@ JobScheduler& JobScheduler::GetInstance() {
     return instance;
 }
 
+JobScheduler::~JobScheduler() {
+    Shutdown();
+}
+
 void JobScheduler::Init(uint32_t workerCount) {
-    if (m_initialized) {
-        VYRA_LOG_CHANNEL(LogChannel::Core, warn, "JobScheduler already initialized");
-        return;
-    }
-    
-    m_queue = std::make_unique<JobQueue>();
-    
-    // Determine worker count (hardware concurrency or specified)
+    std::lock_guard<std::mutex> lifecycleLock(m_lifecycleMutex);
+    if (m_initialized.load()) return;
+
     if (workerCount == 0) {
         workerCount = std::thread::hardware_concurrency();
-        if (workerCount == 0) workerCount = 4; // Fallback
+        if (workerCount == 0) workerCount = 1;
     }
-    
+
+    m_queue = std::make_unique<JobQueue>();
+    m_workers.reserve(workerCount);
     m_workerCount = workerCount;
-    
-    // Create workers
-    for (uint32_t i = 0; i < m_workerCount; ++i) {
-        m_workers.push_back(std::make_unique<Worker>(i, *m_queue));
-        m_workers.back()->Start();
+    m_accepting = true;
+
+    try {
+        for (uint32_t index = 0; index < workerCount; ++index) {
+            auto worker = std::make_unique<Worker>(
+                index, *m_queue, m_outstanding, m_completionCondition, m_completionMutex);
+            worker->Start();
+            m_workers.push_back(std::move(worker));
+        }
+    } catch (...) {
+        m_accepting = false;
+        m_queue->Stop();
+        for (auto& worker : m_workers) worker->Join();
+        m_workers.clear();
+        m_queue.reset();
+        m_workerCount = 0;
+        throw;
     }
-    
+
     m_initialized = true;
-    VYRA_LOG_CHANNEL(LogChannel::Core, info, "JobScheduler initialized with {0} workers", m_workerCount);
+    VYRA_LOG_CHANNEL(LogChannel::Core, info, "JobScheduler initialized with {0} workers",
+                     workerCount);
 }
 
 void JobScheduler::Shutdown() {
-    if (!m_initialized) return;
-    
-    VYRA_LOG_CHANNEL(LogChannel::Core, info, "Shutting down JobScheduler");
-    
-    // Stop queue to wake up workers
-    if (m_queue) {
-        m_queue->Stop();
-    }
-    
-    // Stop all workers
-    for (auto& worker : m_workers) {
-        worker->Stop();
-    }
-    
-    // Join all workers
-    for (auto& worker : m_workers) {
-        worker->Join();
-    }
-    
-    m_workers.clear();
-    m_queue.reset();
-    
     {
-        std::lock_guard<std::mutex> lock(m_jobsMutex);
+        std::lock_guard<std::mutex> lifecycleLock(m_lifecycleMutex);
+        if (!m_initialized.load()) return;
+        m_accepting = false;
+    }
+
+    // Do not abandon queued work or leave handles permanently Pending.
+    WaitForAll();
+
+    std::lock_guard<std::mutex> lifecycleLock(m_lifecycleMutex);
+    if (m_queue) m_queue->Stop();
+    for (auto& worker : m_workers) worker->Join();
+    m_workers.clear();
+    {
+        std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
         m_activeJobs.clear();
     }
-    
+    m_queue.reset();
+    m_workerCount = 0;
     m_initialized = false;
     VYRA_LOG_CHANNEL(LogChannel::Core, info, "JobScheduler shut down");
 }
 
 JobHandle JobScheduler::Schedule(JobFunction function, JobPriority priority) {
-    if (!m_initialized) {
-        VYRA_LOG_CHANNEL(LogChannel::Core, error, "Cannot schedule job - JobScheduler not initialized");
-        return JobHandle();
+    std::lock_guard<std::mutex> lifecycleLock(m_lifecycleMutex);
+    if (!m_initialized.load() || !m_accepting.load() || !m_queue) {
+        VYRA_LOG_CHANNEL(LogChannel::Core, error,
+                         "Cannot schedule job: scheduler is not accepting work");
+        return {};
     }
-    
-    JobHandle handle;
-    auto job = std::make_shared<Job>(handle, function, priority);
-    
+
+    const JobHandle handle = JobHandle::Generate();
+    auto job = std::make_shared<Job>(handle, std::move(function), priority);
     {
-        std::lock_guard<std::mutex> lock(m_jobsMutex);
-        m_activeJobs[handle.GetId()] = job;
+        std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
+        m_activeJobs.emplace(handle.GetId(), job);
     }
-    
-    m_queue->Push(job);
-    
+
+    m_outstanding.fetch_add(1, std::memory_order_release);
+    bool queued = false;
+    try {
+        queued = m_queue->Push(job);
+    } catch (...) {
+        m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
+        std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
+        m_activeJobs.erase(handle.GetId());
+        throw;
+    }
+
+    if (!queued) {
+        m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
+        std::lock_guard<std::mutex> jobsLock(m_jobsMutex);
+        m_activeJobs.erase(handle.GetId());
+        return {};
+    }
     return handle;
 }
 
+std::shared_ptr<Job> JobScheduler::FindJob(JobHandle handle) {
+    if (!handle.IsValid()) return nullptr;
+    std::lock_guard<std::mutex> lock(m_jobsMutex);
+    const auto it = m_activeJobs.find(handle.GetId());
+    return it == m_activeJobs.end() ? nullptr : it->second;
+}
+
 void JobScheduler::Wait(JobHandle handle) {
-    auto job = FindJob(handle);
-    if (job) {
-        job->completionPromise.get_future().wait();
-    }
+    if (auto job = FindJob(handle)) job->completion.wait();
 }
 
 bool JobScheduler::IsComplete(JobHandle handle) {
-    auto job = FindJob(handle);
-    if (!job) return false;
-    
-    return job->status == JobStatus::Completed;
+    const auto status = GetStatus(handle);
+    return status == JobStatus::Completed || status == JobStatus::Failed;
 }
 
 JobStatus JobScheduler::GetStatus(JobHandle handle) {
-    auto job = FindJob(handle);
-    if (!job) return JobStatus::Failed;
-    
-    return job->status;
+    const auto job = FindJob(handle);
+    return job ? job->status.load() : JobStatus::Failed;
 }
 
 void JobScheduler::WaitForAll() {
-    // Wait for all jobs to complete
-    while (true) {
-        {
-            std::lock_guard<std::mutex> lock(m_jobsMutex);
-            bool allComplete = true;
-            
-            for (const auto& [id, job] : m_activeJobs) {
-                if (job->status != JobStatus::Completed && job->status != JobStatus::Failed) {
-                    allComplete = false;
-                    break;
-                }
-            }
-            
-            if (allComplete && m_queue->Empty()) {
-                break;
-            }
-        }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    std::unique_lock<std::mutex> lock(m_completionMutex);
+    m_completionCondition.wait(lock, [this] {
+        return m_outstanding.load(std::memory_order_acquire) == 0;
+    });
 }
 
 size_t JobScheduler::GetPendingJobCount() const {
-    return m_queue->Size();
+    std::lock_guard<std::mutex> lifecycleLock(m_lifecycleMutex);
+    return m_queue ? m_queue->Size() : 0;
 }
 
-std::shared_ptr<Job> JobScheduler::FindJob(JobHandle handle) {
-    std::lock_guard<std::mutex> lock(m_jobsMutex);
-    auto it = m_activeJobs.find(handle.GetId());
-    if (it != m_activeJobs.end()) {
-        return it->second;
-    }
-    return nullptr;
-}
-
-} // namespace jobs
-} // namespace vyra
+} // namespace vyra::jobs

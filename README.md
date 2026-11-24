@@ -14,29 +14,29 @@
   <a href="#"><img src="https://img.shields.io/badge/C%2B%2B-23-purple.svg" alt="C++23"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Vulkan-1.4-red.svg" alt="Vulkan 1.4"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg" alt="Platform"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/Tests-21%2F21%20Passed-brightgreen.svg" alt="Tests"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Tests-Catch2%20suite-informational.svg" alt="Catch2 test suite"/></a>
 </p>
 
 ---
 
 ## Overview
 
-**VYRA Engine** is a modern, open-source, multiplatform C++23 game engine designed from its architectural foundation for extreme performance, strict layer decoupling, modern Vulkan 1.4 rendering, and native agentic AI workflows.
+**VYRA Engine** is a modern, open-source, multiplatform C++23 game engine designed around performance, strict layer decoupling, modern Vulkan 1.4 rendering, and extensible tooling.
 
-Developed under **Florynx Labs**, VYRA provides a high-performance alternative engine built for engineers who value architectural elegance, low-latency execution, and zero technical debt.
+Developed under **Florynx Labs**, VYRA provides a high-performance alternative engine built for engineers who value architectural elegance, low-latency execution, and a roadmap focused on measurable performance and correctness.
 
 ---
 
 ## Key Features (v0.1 Foundation)
 
 - **C++23 Native Core**: Modern C++ architecture (`vyra::core`, `vyra::platform`, `vyra::rhi`, `vyra::renderer`, `vyra::ecs`, `vyra::scene`, `vyra::editor`).
-- **Vulkan 1.4 Dynamic RHI**: Complete Render Hardware Interface abstraction decoupled from engine logic via Volk.
+- **Vulkan 1.4 RHI foundation**: Vulkan backend accessed through the engine graphics abstraction; remaining renderer bypasses are tracked as technical debt.
 - **Decoupled ECS**: EnTT backend encapsulated inside `vyra::ecs::Registry` and `vyra::ecs::Entity`.
 - **Procedural Geometry & Mesh Renderer**: Built-in 3D mesh primitives (Cube, Grid floor, Sphere) and GLSL hemisphere lighting shader pipeline.
 - **Deterministic Scene Serialization**: Human-readable `.vyra` JSON scene format with 128-bit UUID entity tracking.
 - **Obsidian Dark Editor Shell**: Dear ImGui docking interface with HSL-tuned obsidian dark styling.
 - **Transient World Isolation**: Sandbox Play Mode cloning authoring scenes to isolated runtime worlds (`Edit`, `Play`, `Pause`).
-- **100% Automated Test Suite**: 21 Catch2 unit tests covering logger, UUID, timestep, events, RHI context, ECS, scene cloning, JSON roundtrips, camera flight, and mesh primitive generation.
+- **Catch2 test suite**: Unit and optional GPU integration tests covering core, platform, RHI, ECS, scene, assets, profiling and jobs. CI validation is tracked separately from test source coverage.
 
 ---
 
