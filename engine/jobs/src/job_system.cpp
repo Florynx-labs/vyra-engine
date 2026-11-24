@@ -114,7 +114,11 @@ void Worker::WorkerLoop() {
             }
         }
 
-        m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
+        {
+            // Pair predicate updates with the wait mutex to prevent lost wakeups.
+            std::lock_guard<std::mutex> completionLock(m_completionMutex);
+            m_outstanding.fetch_sub(1, std::memory_order_acq_rel);
+        }
         m_completionCondition.notify_all();
     }
     m_running = false;
