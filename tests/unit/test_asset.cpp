@@ -268,3 +268,25 @@ TEST_CASE("VYRA Asset System - AssetRegistry", "[asset][unit]") {
     
     vyra::Log::Shutdown();
 }
+
+
+TEST_CASE("AssetRegistry ID lookups and loads do not reacquire its mutex", "[asset][registry][threading]") {
+    vyra::asset::AssetRegistry registry;
+    const vyra::asset::AssetID assetId(vyra::asset::AssetType::Texture, "textures/registry-lock-regression");
+    const auto handle = registry.RegisterAsset(assetId);
+
+    REQUIRE(handle.IsValid());
+    REQUIRE(registry.IsValidHandle(handle));
+
+    const auto* metadata = registry.GetMetadata(assetId);
+    REQUIRE(metadata != nullptr);
+    REQUIRE(metadata->GetAssetID() == assetId);
+
+    registry.SetLoadFunction(vyra::asset::AssetType::Texture,
+        [handle](const vyra::asset::AssetID&) {
+            return handle;
+        });
+
+    REQUIRE(registry.LoadAsset(assetId) == handle);
+    REQUIRE(registry.GetMetadata(handle)->IsLoaded());
+}
