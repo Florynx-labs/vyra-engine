@@ -82,7 +82,6 @@ private:
     std::mutex& m_completionMutex;
     std::thread m_thread;
     std::atomic<bool> m_running{false};
-    std::atomic<bool> m_shouldStop{false};
 };
 
 class VYRA_API JobScheduler {
