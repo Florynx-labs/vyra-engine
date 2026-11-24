@@ -170,7 +170,7 @@ namespace vyra::ecs {
         }
 
         bool operator==(const Entity& other) const {
-            return m_EntityHandle == other.m_EntityHandle && m_State->NativeRegistry == other.m_State->NativeRegistry;
+            return m_EntityHandle == other.m_EntityHandle && m_State == other.m_State;
         }
         bool operator!=(const Entity& other) const {
             return !(*this == other);
