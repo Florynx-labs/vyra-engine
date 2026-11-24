@@ -54,7 +54,7 @@ size_t JobQueue::Size() const {
 void JobQueue::Stop() {
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_queue.Stop();
+        m_shouldStop = true;
     }
     m_condition.notify_all();
 }
@@ -80,7 +80,7 @@ void Worker::Start() {
 }
 
 void Worker::Stop() {
-    m_shouldStop = true;
+    m_queue.Stop();
 }
 
 void Worker::Join() {
