@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - "editor-rs/**"
-      - ".github/workflows/gpui-editor.yml"
   push:
     branches:
       - "feat/gpui-editor-shell"
