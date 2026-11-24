@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 
@@ -146,27 +147,32 @@ namespace vyra::ecs {
 
         template<typename T, typename... Args>
         T& AddComponent(Args&&... args) {
+            EnsureValid();
             return m_State->NativeRegistry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
         }
 
         template<typename T>
         T& GetComponent() {
+            EnsureValid();
             return m_State->NativeRegistry.get<T>(m_EntityHandle);
         }
 
         template<typename T>
         const T& GetComponent() const {
+            EnsureValid();
             return m_State->NativeRegistry.get<T>(m_EntityHandle);
         }
 
         template<typename T>
         bool HasComponent() const {
-            return m_State->NativeRegistry.all_of<T>(m_EntityHandle);
+            return static_cast<bool>(*this) && m_State->NativeRegistry.all_of<T>(m_EntityHandle);
         }
 
         template<typename T>
         void RemoveComponent() {
-            m_State->NativeRegistry.remove<T>(m_EntityHandle);
+            if (*this) {
+                m_State->NativeRegistry.remove<T>(m_EntityHandle);
+            }
         }
 
         bool operator==(const Entity& other) const {
@@ -186,6 +192,12 @@ namespace vyra::ecs {
         const std::string& GetName() const { return GetComponent<TagComponent>().Tag; }
 
     private:
+        void EnsureValid() const {
+            if (!static_cast<bool>(*this)) {
+                throw std::logic_error("Attempted to access an invalid VYRA entity handle");
+            }
+        }
+
         EntityID m_EntityHandle{ NullEntity };
         std::shared_ptr<RegistryState> m_State;
     };
