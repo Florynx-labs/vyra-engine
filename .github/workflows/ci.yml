@@ -31,7 +31,7 @@ jobs:
             libvulkan-dev mesa-vulkan-drivers \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
             libxi-dev libxfixes-dev libxss-dev libwayland-dev \
-            libxkbcommon-dev libdrm-dev libgbm-dev \
+            libxkbcommon-dev libdrm-dev libgbm-dev libxtst-dev \
             libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
             libibus-1.0-dev libpipewire-0.3-dev libdecor-0-dev
 

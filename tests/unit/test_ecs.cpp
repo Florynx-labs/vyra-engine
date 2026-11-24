@@ -1,4 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
+#include <memory>
+#include <optional>
 #include <vyra/ecs/ecs.hpp>
 
 TEST_CASE("VYRA ECS - Entity Creation and Destruction", "[ecs]") {
@@ -75,4 +76,32 @@ TEST_CASE("VYRA ECS - Registry Each View Iteration", "[ecs]") {
     });
 
     REQUIRE(count == 5);
+}
+
+TEST_CASE("VYRA ECS - Entity keeps registry storage alive", "[ecs][lifetime]") {
+    std::optional<vyra::ecs::Entity> survivingEntity;
+
+    {
+        auto registry = std::make_unique<vyra::ecs::Registry>();
+        const auto id = registry->Create();
+        registry->Emplace<vyra::ecs::TagComponent>(id, "Survivor");
+        survivingEntity.emplace(id, registry.get());
+        REQUIRE(static_cast<bool>(*survivingEntity));
+    }
+
+    // The Registry facade is gone, but the shared EnTT storage remains valid.
+    REQUIRE(static_cast<bool>(*survivingEntity));
+    REQUIRE(survivingEntity->GetName() == "Survivor");
+    survivingEntity->AddComponent<vyra::ecs::TransformComponent>();
+    REQUIRE(survivingEntity->HasComponent<vyra::ecs::TransformComponent>());
+}
+
+TEST_CASE("VYRA ECS - Destroyed entity handles become invalid", "[ecs][lifetime]") {
+    vyra::ecs::Registry registry;
+    const auto id = registry.Create();
+    vyra::ecs::Entity entity(id, &registry);
+
+    REQUIRE(static_cast<bool>(entity));
+    registry.Destroy(id);
+    REQUIRE_FALSE(static_cast<bool>(entity));
 }
