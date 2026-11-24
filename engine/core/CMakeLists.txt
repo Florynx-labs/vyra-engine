@@ -5,6 +5,7 @@ add_library(vyra_core STATIC
     include/vyra/core/uuid.hpp
     include/vyra/core/time.hpp
     include/vyra/core/version.hpp
+    include/vyra/core/memory_pool.hpp
     src/log.cpp
     src/uuid.cpp
     src/time.cpp
