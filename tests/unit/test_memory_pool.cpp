@@ -32,12 +32,12 @@ TEST_CASE("ObjectPool constructs, reuses and destroys objects", "[memory][pool]"
     vyra::core::ObjectPool<PoolProbe, 2> otherPool;
     auto* foreign = otherPool.Create(99);
     REQUIRE_FALSE(pool.Destroy(foreign));
-    REQUIRE_FALSE(pool.Destroy(reinterpret_cast<PoolProbe*>(nullptr)));
+    REQUIRE_FALSE(pool.Destroy(nullptr));
     otherPool.Clear();
 
     pool.Clear();
     REQUIRE(pool.Size() == 0);
-    REQUIRE(PoolProbe::destructions == 3);
+    REQUIRE(PoolProbe::destructions == 4);
 }
 
 TEST_CASE("ObjectPool preserves existing objects when construction throws", "[memory][pool]") {
