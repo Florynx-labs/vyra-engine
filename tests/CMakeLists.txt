@@ -14,6 +14,7 @@ add_executable(vyra_tests
     unit/test_jobs.cpp
     unit/test_memory_pool.cpp
     unit/test_runtime.cpp
+    unit/test_engine_subsystems.cpp
 )
 
 target_link_libraries(vyra_tests
@@ -31,6 +32,10 @@ target_link_libraries(vyra_tests
         vyra_profiler
         vyra_jobs
         vyra_runtime
+        vyra_animation
+        vyra_audio
+        vyra_scripting
+        vyra_input
         Catch2::Catch2WithMain
 )
 
