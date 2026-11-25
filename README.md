@@ -36,6 +36,9 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
 - **Procedural Geometry & Mesh Renderer**: Built-in 3D mesh primitives (Cube, Grid floor, Sphere) and GLSL hemisphere lighting shader pipeline.
 - **2D Physics Foundation**: AABB/circle overlap queries, raycasts, deterministic spatial-hash broadphase and fixed-step rigid-body integration.
 - **Gameplay Runtime**: Typed event bus, backend-neutral input actions, bounded fixed-step clock and scalar animation playback primitives.
+- **Physics Expansion**: 2D impulse contacts with friction, restitution, triggers and distance constraints; 3D sweep-and-prune, capsules, OBB queries and fixed-step rigid-body integration.
+- **Animation, Audio & Scripting Foundations**: CPU skeletal pose sampling/blend trees, a backend-neutral stereo mixer, native gameplay script lifecycle and factory hot-reload generations.
+- **Rendering & Input Foundations**: Validated metallic/roughness PBR material descriptors, render feature/shadow configuration and controller axis deadzones.
 - **3D Physics Geometry**: AABB/sphere overlap queries, contact generation and bounded raycasts. Full 3D dynamics remain under development.
 - **Deterministic Scene Serialization**: Human-readable `.vyra` JSON scene format with 128-bit UUID entity tracking.
 - **Legacy C++ Editor**: Dear ImGui docking interface retained during the transition.
