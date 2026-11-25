@@ -23,6 +23,7 @@ target_include_directories(vyra_scene PUBLIC
 target_link_libraries(vyra_scene PUBLIC
     vyra::core
     vyra::ecs
+    vyra::runtime
     vyra::physics2d
     vyra::physics3d
     glm::glm
