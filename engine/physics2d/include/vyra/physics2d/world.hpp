@@ -41,6 +41,10 @@ struct RigidBody2D {
     float AngularDamping{0.0f};
     bool UseGravity{true};
     bool Enabled{true};
+    glm::vec2 HalfExtents{0.5f};
+    float Friction{0.5f};
+    float Restitution{0.0f};
+    bool IsTrigger{false};
 
     bool IsValid() const;
     float InverseMass() const;
@@ -48,10 +52,26 @@ struct RigidBody2D {
     void ApplyImpulse(const glm::vec2& impulse);
 };
 
+struct TriggerEvent2D {
+    std::uint32_t FirstBody{0};
+    std::uint32_t SecondBody{0};
+    bool Entered{true};
+};
+
+struct DistanceJoint2D {
+    std::uint32_t FirstBody{0};
+    std::uint32_t SecondBody{0};
+    float RestLength{1.0f};
+    float Stiffness{1.0f};
+    bool Enabled{true};
+};
+
 struct PhysicsWorldSettings2D {
     glm::vec2 Gravity{0.0f, -9.81f};
     float FixedTimeStep{1.0f / 60.0f};
     std::uint32_t MaxSubSteps{8};
+    std::uint32_t SolverIterations{8};
+    float PositionCorrection{0.2f};
 };
 
 /// Fixed-step semi-implicit Euler simulation. Collision resolution is a later layer.
@@ -65,12 +85,17 @@ public:
     /// Adds elapsed frame time and executes bounded fixed simulation steps.
     std::uint32_t Advance(float frameDelta, std::vector<RigidBody2D>& bodies);
     void Step(float fixedDelta, std::vector<RigidBody2D>& bodies);
+    void SetJoints(std::vector<DistanceJoint2D> joints) { m_Joints = std::move(joints); }
+    const std::vector<DistanceJoint2D>& GetJoints() const { return m_Joints; }
+    const std::vector<TriggerEvent2D>& GetTriggerEvents() const { return m_TriggerEvents; }
     void ResetAccumulator() { m_Accumulator = 0.0f; }
     float GetInterpolationAlpha() const;
 
 private:
     PhysicsWorldSettings2D m_Settings;
     float m_Accumulator{0.0f};
+    std::vector<DistanceJoint2D> m_Joints;
+    std::vector<TriggerEvent2D> m_TriggerEvents;
 };
 
 } // namespace vyra::physics2d
