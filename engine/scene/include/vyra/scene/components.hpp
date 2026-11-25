@@ -3,6 +3,7 @@
 #include "vyra/core/base.hpp"
 #include "vyra/ecs/ecs.hpp"
 #include "vyra/scene/scene_camera.hpp"
+#include "vyra/physics3d/physics3d.hpp"
 #include <glm/glm.hpp>
 #include <string>
 
@@ -11,6 +12,12 @@ namespace vyra::scene {
     // Re-export core ECS components into scene namespace
     using TagComponent = vyra::ecs::TagComponent;
     using TransformComponent = vyra::ecs::TransformComponent;
+
+    struct VYRA_API PhysicsBody3DComponent {
+        vyra::physics3d::RigidBody3D Body;
+        PhysicsBody3DComponent() = default;
+        explicit PhysicsBody3DComponent(const vyra::physics3d::RigidBody3D& body) : Body(body) {}
+    };
 
     struct VYRA_API CameraComponent {
         SceneCamera Camera;
