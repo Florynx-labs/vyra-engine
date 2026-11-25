@@ -39,11 +39,12 @@ public:
         auto& bindings = it->second;
         const auto oldSize = bindings.size();
         std::erase(bindings, code);
+        const bool changed = bindings.size() != oldSize;
         if (bindings.empty()) {
             m_Bindings.erase(it);
             m_States.erase(action);
         }
-        return bindings.size() != oldSize;
+        return changed;
     }
 
     void SetButtonDown(InputCode code, bool down) {
