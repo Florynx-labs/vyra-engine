@@ -79,8 +79,10 @@ public:
     glm::vec3 Position{0.0f};
     glm::vec3 Velocity{0.0f};
     glm::vec3 Force{0.0f};
+    glm::vec3 HalfExtents{0.5f};
     float Mass{1.0f};
     float Restitution{0.0f};
+    float Friction{0.5f};
     bool UseGravity{true};
     bool Enabled{true};
     float InverseMass() const;
