@@ -2,6 +2,8 @@
 
 #include "vyra/core/base.hpp"
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <cstdint>
 #include <glm/gtc/quaternion.hpp>
 #include <algorithm>
 #include <cmath>
