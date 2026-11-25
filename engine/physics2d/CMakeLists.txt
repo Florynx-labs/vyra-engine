@@ -1,6 +1,7 @@
 add_library(vyra_physics2d STATIC
     include/vyra/physics2d/physics2d.hpp
     src/physics2d.cpp
+    src/world.cpp
 )
 
 add_library(vyra::physics2d ALIAS vyra_physics2d)
