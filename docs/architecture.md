@@ -72,6 +72,11 @@ The current implementation also includes `vyra::asset`, `vyra::profiler`, `vyra:
 - JSON scene serialization & deserialization (`SceneSerializer`).
 - Isolated scene cloning for Play Mode state sandboxing (`Scene::Copy`).
 
+### 7. Physics
+- vyra::physics2d: deterministic spatial hash, AABB contact solver, friction, restitution, trigger transitions and distance constraints.
+- vyra::physics3d: sweep-and-prune broadphase, sphere/AABB/capsule/OBB queries and translational AABB rigid-body response.
+- Scene adapters synchronize 2D/3D physics components with ECS transforms through fixed-step runtime hooks.
+
 ### 8. `vyra::profiler` and `vyra::jobs`
 - CPU scope/frame and memory accounting profiler; GPU timing remains a future Vulkan-query integration.
 - Worker-thread job scheduler with explicit completion handles and graceful queue draining.
