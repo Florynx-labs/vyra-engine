@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cstdint>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <algorithm>
 #include <cmath>
 #include <string>
