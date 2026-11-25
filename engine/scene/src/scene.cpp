@@ -99,9 +99,12 @@ namespace vyra::scene {
 
     void Scene::StopRuntime() {
         if (!m_RuntimeStarted) return;
-        for (auto it = m_RuntimeSystems.rbegin(); it != m_RuntimeSystems.rend(); ++it)
-            (*it)->OnStop(*this);
         m_RuntimeStarted = false;
+        const auto systems = m_RuntimeSystems;
+        for (auto it = systems.rbegin(); it != systems.rend(); ++it) {
+            if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), *it) != m_RuntimeSystems.end())
+                (*it)->OnStop(*this);
+        }
         m_RuntimeClock.Reset();
     }
 
@@ -109,7 +112,9 @@ namespace vyra::scene {
         if (!m_RuntimeStarted) {
             m_RuntimeStarted = true;
             const auto systems = m_RuntimeSystems;
-            for (const auto& system : systems) system->OnStart(*this);
+            for (const auto& system : systems)
+                if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                    system->OnStart(*this);
         }
 
         const auto systems = m_RuntimeSystems;
