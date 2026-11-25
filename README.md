@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Version-v0.1.4-informational.svg" alt="Version 0.1.4"/></a>
   <a href="#"><img src="https://img.shields.io/badge/C%2B%2B-23-purple.svg" alt="C++23"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Vulkan-1.4-red.svg" alt="Vulkan 1.4"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg" alt="Platform"/></a>
@@ -27,7 +28,7 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
 
 ---
 
-## Key Features (v0.1 Foundation)
+## Key Features (v0.1.4 · hardening in progress)
 
 - **C++23 Native Core**: Modern C++ architecture (`vyra::core`, `vyra::platform`, `vyra::rhi`, `vyra::renderer`, `vyra::ecs`, `vyra::scene`, `vyra::editor`).
 - **Vulkan 1.4 RHI foundation**: Vulkan backend accessed through the engine graphics abstraction; remaining renderer bypasses are tracked as technical debt.

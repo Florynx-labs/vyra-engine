@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Reject malformed scene documents before clearing or replacing the active scene; validate entity/component object shapes and finite vector values.
 - Harden job scheduler completion, shutdown draining, and worker exception handling.
 - Return synchronized profiler snapshots and prevent memory-accounting underflow.
 
 ### Added
+- Debug and Release Linux CI matrix plus a dedicated Vulkan validation-layer run using Mesa lavapipe.
 - Fixed-size stable-address object pool and ECS entity-storage reservation.
 - Regression tests for job lifecycle, profiler concurrency, and object-pool lifetime.
 - Headless Linux CI workflow and optional GPU-test build switch.
