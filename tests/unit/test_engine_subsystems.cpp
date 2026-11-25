@@ -35,6 +35,11 @@ TEST_CASE("2D solver resolves restitution and reports triggers", "[physics2d][so
     bodies[0].Position = bodies[1].Position = {0.0f, 0.0f};
     world.Step(0.01f, bodies);
     REQUIRE(world.GetTriggerEvents().size() == 1);
+    REQUIRE(world.GetTriggerEvents()[0].Entered);
+    bodies[1].Position = {5.0f, 0.0f};
+    world.Step(0.01f, bodies);
+    REQUIRE(world.GetTriggerEvents().size() == 1);
+    REQUIRE_FALSE(world.GetTriggerEvents()[0].Entered);
 }
 
 TEST_CASE("2D distance joints constrain body separation", "[physics2d][joints]") {
@@ -85,6 +90,17 @@ TEST_CASE("3D rigid body world integrates fixed steps", "[physics3d][world]") {
     std::vector<RigidBody3D> bodies(1);
     REQUIRE(world.Advance(0.1f,bodies) == 1);
     REQUIRE(std::abs(bodies[0].Velocity.y + 1.0f) < 1.0e-4f);
+
+    bodies.resize(2);
+    bodies[0].UseGravity = bodies[1].UseGravity = false;
+    bodies[0].Position = {-0.4f, 0.0f, 0.0f};
+    bodies[1].Position = {0.4f, 0.0f, 0.0f};
+    bodies[0].Velocity = {1.0f, 0.0f, 0.0f};
+    bodies[1].Velocity = {-1.0f, 0.0f, 0.0f};
+    bodies[0].Restitution = bodies[1].Restitution = 1.0f;
+    world.Step(0.01f, bodies);
+    REQUIRE(bodies[0].Velocity.x < 0.0f);
+    REQUIRE(bodies[1].Velocity.x > 0.0f);
 }
 
 TEST_CASE("Skeletal animation samples and blends bone poses", "[animation]") {
@@ -113,6 +129,9 @@ TEST_CASE("Audio mixer produces stereo samples and clamps output", "[audio]") {
     REQUIRE(output[1] > 0.0f);
     REQUIRE(output[4] == 1.0f);
     REQUIRE(output[5] == 1.0f);
+    const auto spatial = AudioMixer::Spatialize(Listener3D{}, Emitter3D{{1,0,0},1.0f,0.0f,10.0f});
+    REQUIRE(spatial.Gain > 0.0f);
+    REQUIRE(spatial.Pan > 0.0f);
 }
 
 TEST_CASE("Script registry hot reloads factories by generation", "[scripting]") {
