@@ -151,22 +151,28 @@ void PhysicsWorld2D::Step(float fixedDelta, std::vector<RigidBody2D>& bodies) {
 
     struct Manifold { std::size_t a, b; Contact contact; };
     std::vector<Manifold> contacts;
-    for (std::size_t i = 0; i < bodies.size(); ++i) {
-        auto& a = bodies[i];
-        if (!a.Enabled || !a.IsValid()) continue;
-        const AABB boundsA{a.Position - a.HalfExtents, a.Position + a.HalfExtents};
-        for (std::size_t j = i + 1; j < bodies.size(); ++j) {
-            auto& b = bodies[j];
-            if (!b.Enabled || !b.IsValid() || (a.InverseMass() == 0.0f && b.InverseMass() == 0.0f)) continue;
-            const AABB boundsB{b.Position - b.HalfExtents, b.Position + b.HalfExtents};
-            Contact contact;
-            if (!Overlap(boundsA, boundsB, &contact)) continue;
-            if (a.IsTrigger || b.IsTrigger) {
-                currentTriggers.emplace_back(static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j));
-            } else {
-                contacts.push_back({i, j, contact});
-            }
-        }
+    std::vector<AABB> bounds;
+    bounds.reserve(bodies.size());
+    for (const auto& body : bodies) {
+        if (body.Enabled && body.IsValid())
+            bounds.push_back(AABB{body.Position - body.HalfExtents, body.Position + body.HalfExtents});
+        else
+            bounds.push_back(AABB{{1.0f, 1.0f}, {0.0f, 0.0f}});
+    }
+
+    SpatialHash2D broadphase(4.0f, 16384);
+    broadphase.Rebuild(bounds);
+    for (const auto& [first, second] : broadphase.ComputePairs()) {
+        auto& a = bodies[first];
+        auto& b = bodies[second];
+        if (!a.Enabled || !b.Enabled ||
+            (a.InverseMass() == 0.0f && b.InverseMass() == 0.0f)) continue;
+        Contact contact;
+        if (!Overlap(bounds[first], bounds[second], &contact)) continue;
+        if (a.IsTrigger || b.IsTrigger)
+            currentTriggers.emplace_back(first, second);
+        else
+            contacts.push_back({first, second, contact});
     }
 
     std::sort(currentTriggers.begin(), currentTriggers.end());
