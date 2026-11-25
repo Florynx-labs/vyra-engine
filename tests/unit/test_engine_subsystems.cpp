@@ -268,3 +268,22 @@ TEST_CASE("Input action unbinding safely removes the final binding", "[input][ru
     actions.AdvanceFrame();
     REQUIRE(actions.WasPressed("Interact"));
 }
+
+
+TEST_CASE("Scene runtime synchronizes 3D rigid bodies with ECS transforms", "[scene][physics3d]") {
+    using namespace vyra::scene;
+    Scene scene("3D physics integration");
+    auto entity = scene.CreateEntity("Moving cube");
+    vyra::physics3d::RigidBody3D body;
+    body.UseGravity = false;
+    body.Velocity = {2.0f, 0.0f, 0.0f};
+    entity.AddComponent<PhysicsBody3DComponent>(body);
+
+    vyra::physics3d::PhysicsWorldSettings3D settings;
+    settings.Gravity = {0.0f, 0.0f, 0.0f};
+    auto physics = std::make_shared<Physics3DSceneSystem>(settings);
+    REQUIRE(scene.AddRuntimeSystem(physics));
+    scene.OnUpdateRuntime(vyra::Timestep(1.0f / 60.0f));
+    REQUIRE(scene.GetRegistry().Get<TransformComponent>(entity.GetID()).Translation.x > 0.0f);
+    scene.StopRuntime();
+}
