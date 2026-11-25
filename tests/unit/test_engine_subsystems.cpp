@@ -193,6 +193,7 @@ TEST_CASE("PBR material validates normalized parameters", "[renderer][materials]
     REQUIRE(texture.IsValid());
     texture.Width = 0;
     REQUIRE_FALSE(texture.IsValid());
+    material.Roughness = 0.5f;
     material.BaseColorMap = {42, 0};
     REQUIRE(material.IsValid());
     material.NormalMap = {43, 4};
