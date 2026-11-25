@@ -1,6 +1,7 @@
 #include "vyra/physics2d/physics2d.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 
 using namespace vyra::physics2d;
 
@@ -10,9 +11,9 @@ TEST_CASE("2D AABB overlap reports a stable contact", "[physics2d]") {
     Contact contact{};
 
     REQUIRE(Overlap(first, second, &contact));
-    REQUIRE(contact.Penetration == Catch::Approx(0.5f));
-    REQUIRE(contact.Normal.x == Catch::Approx(1.0f));
-    REQUIRE(contact.Normal.y == Catch::Approx(0.0f));
+    REQUIRE(std::abs(contact.Penetration - 0.5f) < 1.0e-4f);
+    REQUIRE(std::abs(contact.Normal.x - 1.0f) < 1.0e-4f);
+    REQUIRE(std::abs(contact.Normal.y) < 1.0e-4f);
 }
 
 TEST_CASE("2D circle overlap handles tangency", "[physics2d]") {
@@ -21,7 +22,7 @@ TEST_CASE("2D circle overlap handles tangency", "[physics2d]") {
     Contact contact{};
 
     REQUIRE(Overlap(first, second, &contact));
-    REQUIRE(contact.Penetration == Catch::Approx(0.0f));
+    REQUIRE(std::abs(contact.Penetration) < 1.0e-4f);
 }
 
 TEST_CASE("2D circle and box overlap detects containment", "[physics2d]") {
@@ -31,7 +32,7 @@ TEST_CASE("2D circle and box overlap detects containment", "[physics2d]") {
 
     REQUIRE(Overlap(circle, box, &contact));
     REQUIRE(contact.Penetration > 0.25f);
-    REQUIRE(glm::length(contact.Normal) == Catch::Approx(1.0f));
+    REQUIRE(std::abs(glm::length(contact.Normal) - 1.0f) < 1.0e-4f);
 }
 
 TEST_CASE("2D raycast returns nearest AABB hit", "[physics2d]") {
@@ -40,8 +41,8 @@ TEST_CASE("2D raycast returns nearest AABB hit", "[physics2d]") {
 
     const auto hit = Raycast(ray, box);
     REQUIRE(hit.has_value());
-    REQUIRE(hit->Distance == Catch::Approx(2.0f));
-    REQUIRE(hit->Normal.x == Catch::Approx(-1.0f));
+    REQUIRE(std::abs(hit->Distance - 2.0f) < 1.0e-4f);
+    REQUIRE(std::abs(hit->Normal.x + 1.0f) < 1.0e-4f);
 }
 
 TEST_CASE("2D raycast rejects hits beyond its maximum distance", "[physics2d]") {
