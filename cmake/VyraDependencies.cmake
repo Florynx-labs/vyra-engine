@@ -12,6 +12,12 @@ set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(spdlog)
 
+# The editor bridge is a shared library. spdlog is intentionally static, so
+# its objects must be position-independent before they can be linked into it.
+if(TARGET spdlog)
+    set_target_properties(spdlog PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+
 # 2. GLM (OpenGL Mathematics)
 message(STATUS "[VYRA Dependencies] Configuring GLM...")
 FetchContent_Declare(
