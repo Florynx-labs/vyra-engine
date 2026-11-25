@@ -75,7 +75,7 @@ public:
     ComputePairs(const std::vector<AABB>& bounds) const;
 };
 
-struct RigidBody3D {
+// Translation-only rigid body foundation. Rotation/inertia and contact solving are follow-up work.\nstruct RigidBody3D {
     glm::vec3 Position{0.0f};
     glm::vec3 Velocity{0.0f};
     glm::vec3 Force{0.0f};
