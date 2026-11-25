@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 description = "GPUI-based editor shell for VYRA Engine"
+build = "build.rs"
+
+[lib]
+name = "vyra_editor"
+path = "src/lib.rs"
 
 [dependencies]
 # Keep both crates on the exact same upstream Zed revision.
