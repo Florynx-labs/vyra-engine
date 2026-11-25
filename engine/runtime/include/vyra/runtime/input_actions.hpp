@@ -2,6 +2,7 @@
 
 #include "vyra/core/base.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
