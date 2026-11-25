@@ -24,8 +24,7 @@ struct Skeleton {
     bool IsValid() const {
         for (std::size_t i = 0; i < Bones.size(); ++i) {
             const auto parent = Bones[i].Parent;
-            if (parent < -1 || parent >= static_cast<int32_t>(Bones.size()) ||
-                parent == static_cast<int32_t>(i)) return false;
+            if (parent < -1 || parent >= static_cast<int32_t>(i)) return false;
         }
         return true;
     }
@@ -81,6 +80,20 @@ inline std::vector<BonePose> Sample(const AnimationClip& clip, float timeSeconds
         result.push_back(pose);
     }
     return result;
+}
+
+inline std::vector<glm::mat4> BuildSkinningPalette(
+    const Skeleton& skeleton, const std::vector<BonePose>& pose) {
+    if (!skeleton.IsValid() || pose.size() != skeleton.Bones.size()) return {};
+    std::vector<glm::mat4> globalPose(pose.size(), glm::mat4(1.0f));
+    std::vector<glm::mat4> palette(pose.size(), glm::mat4(1.0f));
+    for (std::size_t i = 0; i < pose.size(); ++i) {
+        const glm::mat4 local = pose[i].ToMatrix();
+        const int32_t parent = skeleton.Bones[i].Parent;
+        globalPose[i] = parent >= 0 ? globalPose[static_cast<std::size_t>(parent)] * local : local;
+        palette[i] = globalPose[i] * skeleton.Bones[i].InverseBind;
+    }
+    return palette;
 }
 
 class VYRA_API BlendTree1D {
