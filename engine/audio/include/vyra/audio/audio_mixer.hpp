@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vyra/core/base.hpp"
+#include <glm/glm.hpp>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
