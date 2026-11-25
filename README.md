@@ -79,7 +79,7 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
          +--------------------------------------------+
 ```
 
-For detailed component documentation, see [Architecture Overview](docs/architecture.md). Physics scope and current limitations are documented in [Physics Modules](docs/physics/overview.md).
+For detailed component documentation, see [Architecture Overview](docs/architecture.md). Physics scope and current limitations are documented in [Physics Modules](docs/physics/overview.md). Runtime primitives and their guarantees are documented in [Runtime Subsystems](docs/runtime-subsystems.md).
 
 ---
 
