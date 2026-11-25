@@ -34,6 +34,8 @@ struct Listener3D {
     glm::vec3 Up{0.0f, 1.0f, 0.0f};
 };
 
+struct SpatialMix { float Gain{0.0f}; float Pan{0.0f}; };
+
 struct Emitter3D {
     glm::vec3 Position{0.0f};
     float Gain{1.0f};
@@ -81,6 +83,18 @@ public:
         }
         for (std::size_t i = 0; i < frameCount * 2; ++i)
             output[i] = std::clamp(output[i], -1.0f, 1.0f);
+    }
+
+    static SpatialMix Spatialize(const Listener3D& listener, const Emitter3D& emitter) {
+        const glm::vec3 offset = emitter.Position - listener.Position;
+        const float distance = glm::length(offset);
+        if (!std::isfinite(distance) || distance <= 1.0e-6f) return {std::max(0.0f, emitter.Gain), 0.0f};
+        const glm::vec3 forward = glm::normalize(listener.Forward);
+        const glm::vec3 up = glm::normalize(listener.Up);
+        const glm::vec3 right = glm::cross(forward, up);
+        const float rightLength = glm::length(right);
+        const float pan = rightLength > 1.0e-6f ? glm::dot(offset / distance, right / rightLength) : 0.0f;
+        return {Attenuation(listener, emitter), std::clamp(pan, -1.0f, 1.0f)};
     }
 
     static float Attenuation(const Listener3D& listener, const Emitter3D& emitter) {
