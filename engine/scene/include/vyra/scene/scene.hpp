@@ -5,10 +5,23 @@
 #include "vyra/core/uuid.hpp"
 #include "vyra/ecs/ecs.hpp"
 #include "vyra/scene/components.hpp"
+#include "vyra/runtime/fixed_step_clock.hpp"
+
+#include <memory>
+#include <vector>
 
 #include <string>
 
 namespace vyra::scene {
+
+    class VYRA_API SceneRuntimeSystem {
+    public:
+        virtual ~SceneRuntimeSystem() = default;
+        virtual void OnStart(Scene&) {}
+        virtual void OnFixedUpdate(Scene&, Timestep) {}
+        virtual void OnUpdate(Scene&, Timestep) {}
+        virtual void OnStop(Scene&) {}
+    };
 
     class VYRA_API Scene {
     public:
@@ -24,6 +37,9 @@ namespace vyra::scene {
         void Clear();
 
         void OnUpdateRuntime(Timestep ts);
+        bool AddRuntimeSystem(std::shared_ptr<SceneRuntimeSystem> system);
+        bool RemoveRuntimeSystem(const std::shared_ptr<SceneRuntimeSystem>& system);
+        void StopRuntime();
         void OnUpdateEditor(Timestep ts);
         void OnViewportResize(uint32_t width, uint32_t height);
 
@@ -49,6 +65,9 @@ namespace vyra::scene {
         vyra::ecs::Registry m_Registry;
         uint32_t m_ViewportWidth{ 0 };
         uint32_t m_ViewportHeight{ 0 };
+        std::vector<std::shared_ptr<SceneRuntimeSystem>> m_RuntimeSystems;
+        vyra::runtime::FixedStepClock m_RuntimeClock{1.0 / 60.0, 8, 0.25};
+        bool m_RuntimeStarted{ false };
 
         friend class vyra::ecs::Entity;
         friend class SceneSerializer;
