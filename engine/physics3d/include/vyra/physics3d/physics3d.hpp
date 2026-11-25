@@ -4,6 +4,9 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/gtx/quaternion.hpp>
 #include <cstdint>
 #include <utility>
