@@ -112,9 +112,11 @@ namespace vyra::scene {
         if (!m_RuntimeStarted) {
             m_RuntimeStarted = true;
             const auto systems = m_RuntimeSystems;
-            for (const auto& system : systems)
-                if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+            for (const auto& system : systems) {
+                if (m_RuntimeStarted && std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
                     system->OnStart(*this);
+            }
+            if (!m_RuntimeStarted) return;
         }
 
         const auto systems = m_RuntimeSystems;
