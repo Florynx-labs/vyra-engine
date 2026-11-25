@@ -30,6 +30,7 @@ target_link_libraries(vyra_tests
         vyra_asset
         vyra_profiler
         vyra_jobs
+        vyra_runtime
         Catch2::Catch2WithMain
 )
 
