@@ -221,6 +221,13 @@ TEST_CASE("Scene runtime lifecycle drives physics components through ECS", "[sce
     body.UseGravity = false;
     body.Velocity = {1.0f, 0.0f};
     entity.AddComponent<PhysicsBody2DComponent>(body);
+    auto triggerEntity = scene.CreateEntity("Trigger");
+    triggerEntity.AddComponent<Transform2DComponent>(glm::vec2(0.0f));
+    vyra::physics2d::RigidBody2D triggerBody;
+    triggerBody.Mass = 0.0f;
+    triggerBody.UseGravity = false;
+    triggerBody.IsTrigger = true;
+    triggerEntity.AddComponent<PhysicsBody2DComponent>(triggerBody);
 
     vyra::physics2d::PhysicsWorldSettings2D settings;
     settings.Gravity = {0.0f, 0.0f};
@@ -233,6 +240,11 @@ TEST_CASE("Scene runtime lifecycle drives physics components through ECS", "[sce
     REQUIRE(probe->fixed == 2);
     REQUIRE(probe->updates == 1);
     REQUIRE(scene.GetRegistry().Get<Transform2DComponent>(entity.GetID()).Position.x > 0.0f);
+    const auto triggerEvents = physics->GetTriggerEvents();
+    REQUIRE(triggerEvents.size() == 1);
+    REQUIRE(triggerEvents[0].Entered);
+    REQUIRE((triggerEvents[0].First == entity.GetID() && triggerEvents[0].Second == triggerEntity.GetID()) ||
+            (triggerEvents[0].First == triggerEntity.GetID() && triggerEvents[0].Second == entity.GetID()));
     scene.StopRuntime();
     REQUIRE(probe->stops == 1);
 }
