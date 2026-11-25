@@ -2,6 +2,7 @@
 
 #include "vyra/core/base.hpp"
 #include "vyra/ecs/ecs.hpp"
+#include "vyra/physics2d/world.hpp"
 #include <glm/glm.hpp>
 #include <string>
 
@@ -39,6 +40,12 @@ namespace vyra::scene {
 
             return translation * rotation * scale;
         }
+    };
+
+    struct VYRA_API PhysicsBody2DComponent {
+        vyra::physics2d::RigidBody2D Body;
+        PhysicsBody2DComponent() = default;
+        explicit PhysicsBody2DComponent(const vyra::physics2d::RigidBody2D& body) : Body(body) {}
     };
 
     // Sprite component for 2D rendering
