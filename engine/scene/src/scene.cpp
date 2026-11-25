@@ -122,11 +122,11 @@ namespace vyra::scene {
         const auto systems = m_RuntimeSystems;
         m_RuntimeClock.Advance(ts.GetSeconds(), [&](double fixedDelta) {
             for (const auto& system : systems)
-                if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                if (m_RuntimeStarted && std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
                     system->OnFixedUpdate(*this, Timestep(static_cast<float>(fixedDelta)));
         });
         for (const auto& system : systems)
-            if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+            if (m_RuntimeStarted && std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
                 system->OnUpdate(*this, ts);
     }
 
