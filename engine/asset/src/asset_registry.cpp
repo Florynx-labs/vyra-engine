@@ -128,6 +128,19 @@ bool AssetRegistry::LoadAsset(AssetHandle handle) {
     return LoadAssetUnlocked(handle);
 }
 
+AssetHandle AssetRegistry::LoadAsset(const AssetID& assetId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    const auto it = idToHandle_.find(assetId);
+    if (it == idToHandle_.end() || !IsValidHandleUnlocked(it->second)) {
+        VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to load unregistered asset: {}",
+                        assetId.ToString());
+        return AssetHandle::Invalid();
+    }
+
+    return LoadAssetUnlocked(it->second) ? it->second : AssetHandle::Invalid();
+}
+
 bool AssetRegistry::LoadAssetUnlocked(AssetHandle handle) {
     if (!IsValidHandleUnlocked(handle)) {
         VYRA_LOG_CHANNEL(LogChannel::Assets, error, "Attempted to load invalid handle: {}", handle.ToUint64());
