@@ -155,6 +155,8 @@ std::optional<RayHit> Raycast(const Ray2D& ray, const AABB& box) {
 
     if (farDistance < 0.0f || nearDistance > ray.MaxDistance) return std::nullopt;
     const float distance = std::max(nearDistance, 0.0f);
+    if (glm::dot(nearNormal, nearNormal) <= std::numeric_limits<float>::epsilon())
+        nearNormal = -ray.Direction;
     return RayHit{ray.Origin + ray.Direction * distance, nearNormal, distance};
 }
 
