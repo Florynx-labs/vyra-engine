@@ -96,6 +96,7 @@ private:
     float m_Accumulator{0.0f};
     std::vector<DistanceJoint2D> m_Joints;
     std::vector<TriggerEvent2D> m_TriggerEvents;
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> m_PreviousTriggers;
 };
 
 } // namespace vyra::physics2d
