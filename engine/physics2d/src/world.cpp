@@ -30,6 +30,7 @@ void SpatialHash2D::Clear() {
 void SpatialHash2D::Rebuild(const std::vector<AABB>& bounds) {
     Clear();
     for (std::size_t index = 0; index < bounds.size(); ++index) {
+        if (index > std::numeric_limits<std::uint32_t>::max()) break;
         const AABB& box = bounds[index];
         if (!box.IsValid()) continue;
 
