@@ -116,6 +116,15 @@ TEST_CASE("Skeletal animation samples and blends bone poses", "[animation]") {
     REQUIRE(tree.AddChild(0.0f,clip.Frames[0]));
     REQUIRE(tree.AddChild(1.0f,clip.Frames[1]));
     REQUIRE(std::abs(tree.Evaluate(0.5f)[0].Translation.x - 1.0f) < 1.0e-4f);
+    Skeleton skeleton;
+    skeleton.Bones = {{"root", -1, glm::mat4(1.0f)}, {"child", 0, glm::mat4(1.0f)}};
+    std::vector<BonePose> hierarchyPose(2);
+    hierarchyPose[0].Translation = {1.0f, 0.0f, 0.0f};
+    hierarchyPose[1].Translation = {0.0f, 2.0f, 0.0f};
+    const auto palette = BuildSkinningPalette(skeleton, hierarchyPose);
+    REQUIRE(palette.size() == 2);
+    REQUIRE(std::abs(palette[1][3].x - 1.0f) < 1.0e-4f);
+    REQUIRE(std::abs(palette[1][3].y - 2.0f) < 1.0e-4f);
 }
 
 TEST_CASE("Audio mixer produces stereo samples and clamps output", "[audio]") {
