@@ -1,6 +1,7 @@
 #include "vyra/scene/scene.hpp"
 #include "vyra/core/log.hpp"
 #include "vyra/scene/components.hpp"
+#include "vyra/scene/components_2d.hpp"
 
 #include <algorithm>
 
@@ -43,6 +44,10 @@ namespace vyra::scene {
 
         // Second pass: Copy components
         CopyComponent<TransformComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<Transform2DComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<PhysicsBody2DComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<PhysicsBody3DComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<SpriteComponent>(newScene->m_Registry, other->m_Registry, entMap);
         CopyComponent<CameraComponent>(newScene->m_Registry, other->m_Registry, entMap);
         CopyComponent<MeshComponent>(newScene->m_Registry, other->m_Registry, entMap);
         CopyComponent<SpriteRendererComponent>(newScene->m_Registry, other->m_Registry, entMap);
