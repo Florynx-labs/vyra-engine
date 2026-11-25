@@ -13,7 +13,10 @@ const MUTED: u32 = 0x8e9a90;
 const GREEN: u32 = 0x69b58b;
 const GREEN_DARK: u32 = 0x203b2c;
 
-struct VyraEditor;
+struct VyraEditor {
+    selected_entity: &'static str,
+    is_playing: bool,
+}
 
 fn label(value: &'static str, color: u32, size: f32) -> impl IntoElement {
     div().text_size(px(size)).text_color(rgb(color)).child(value)
@@ -38,7 +41,7 @@ fn panel_title(value: &'static str) -> impl IntoElement {
         .child(label("···", MUTED, 15.))
 }
 
-fn scene_row(name: &'static str, kind: &'static str, selected: bool) -> impl IntoElement {
+fn scene_row(name: &'static str, kind: &'static str, selected: bool, cx: &mut Context<VyraEditor>) -> impl IntoElement {
     let background = if selected { GREEN_DARK } else { SURFACE };
     let foreground = if selected { TEXT } else { MUTED };
     div()
@@ -48,6 +51,10 @@ fn scene_row(name: &'static str, kind: &'static str, selected: bool) -> impl Int
         .items_center()
         .gap_2()
         .bg(rgb(background))
+        .on_click(cx.listener(move |this, _, _, cx| {
+            this.selected_entity = name;
+            cx.notify();
+        }))
         .child(label(kind, if selected { GREEN } else { MUTED }, 12.))
         .child(label(name, foreground, 12.))
 }
@@ -72,7 +79,7 @@ fn property_row(name: &'static str, value: &'static str) -> impl IntoElement {
 }
 
 impl Render for VyraEditor {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .flex()
@@ -160,7 +167,16 @@ impl Render for VyraEditor {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(label("▶  Play", TEXT, 11.))
+                            .child(
+                                div()
+                                    .px_2()
+                                    .py_1()
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.is_playing = !this.is_playing;
+                                        cx.notify();
+                                    }))
+                                    .child(label(if self.is_playing { "■  Stop" } else { "▶  Play" }, TEXT, 11.)),
+                            )
                             .child(label("Ⅱ  Pause", MUTED, 11.))
                             .child(label("■  Stop", MUTED, 11.))
                             .child(
@@ -201,12 +217,12 @@ impl Render for VyraEditor {
                                     ),
                             )
                             .child(scene_row("Scene_01", "▾", true))
-                            .child(scene_row("Directional Light", "☼", false))
-                            .child(scene_row("Camera", "◉", false))
-                            .child(scene_row("Environment", "◇", false))
+                            .child(scene_row("Directional Light", "☼", self.selected_entity == "Directional Light", cx))
+                            .child(scene_row("Camera", "◉", self.selected_entity == "Camera", cx))
+                            .child(scene_row("Environment", "◇", self.selected_entity == "Environment", cx))
                             .child(scene_row("Cube", "▣", false))
-                            .child(scene_row("Sphere", "●", false))
-                            .child(scene_row("Ground", "▱", false))
+                            .child(scene_row("Sphere", "●", self.selected_entity == "Sphere", cx))
+                            .child(scene_row("Ground", "▱", self.selected_entity == "Ground", cx))
                             .child(div().flex_1()),
                     )
                     .child(
@@ -330,9 +346,9 @@ impl Render for VyraEditor {
                                                             .text_size(px(12.))
                                                             .font_weight(gpui::FontWeight::MEDIUM)
                                                             .text_color(rgb(TEXT))
-                                                            .child("Cube"),
+                                                            .child(self.selected_entity),
                                                     )
-                                                    .child(label("Entity · 0000-0001", MUTED, 9.)),
+                                                    .child(label("Selected scene entity", MUTED, 9.)),
                                             ),
                                     )
                                     .child(
@@ -364,7 +380,7 @@ impl Render for VyraEditor {
                     .bg(rgb(0x151a16))
                     .border_t_1()
                     .border_color(rgb(BORDER))
-                    .child(label("VYRA 0.1.4  ·  EDITOR PROTOTYPE", MUTED, 9.))
+                    .child(label(if self.is_playing { "VYRA 0.1.4  ·  PLAY PREVIEW" } else { "VYRA 0.1.4  ·  EDITOR PROTOTYPE" }, MUTED, 9.))
                     .child(label("C++23   /   Vulkan 1.4   /   GPUI  ·  UI ONLY", MUTED, 9.)),
             )
     }
