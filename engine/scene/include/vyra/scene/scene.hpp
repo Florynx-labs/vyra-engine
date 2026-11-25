@@ -14,6 +14,8 @@
 
 namespace vyra::scene {
 
+    class Scene;
+
     class VYRA_API SceneRuntimeSystem {
     public:
         virtual ~SceneRuntimeSystem() = default;
