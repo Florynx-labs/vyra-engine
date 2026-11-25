@@ -58,7 +58,7 @@ TEST_CASE("3D broadphase returns deterministic overlapping candidates", "[physic
         AABB{{8,8,8},{9,9,9}}, AABB{{0,0,0},{-1,-1,-1}}
     });
     REQUIRE(pairs.size() == 1);
-    REQUIRE(pairs[0] == std::pair<uint32_t,uint32_t>{0,1});
+    REQUIRE((pairs[0] == std::pair<uint32_t,uint32_t>{0,1}));
 }
 
 TEST_CASE("3D capsule and oriented box collision queries", "[physics3d][shapes]") {
