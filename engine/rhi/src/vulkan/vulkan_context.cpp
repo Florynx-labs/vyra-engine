@@ -68,19 +68,25 @@ namespace vyra::rhi {
         appInfo.engineVersion = VK_MAKE_API_VERSION(0, 0, 1, 0);
         appInfo.apiVersion = VK_API_VERSION_1_4; // Updated to Vulkan 1.4
 
-        // Extensions
-        if (!SDL_WasInit(SDL_INIT_VIDEO)) {
-            SDL_Init(SDL_INIT_VIDEO);
-        }
-
-        uint32_t sdlExtCount = 0;
-        const char* const* sdlExtensions = SDL_Vulkan_GetInstanceExtensions(&sdlExtCount);
-
+        // Surface extensions are only available when SDL's video subsystem starts.
+        // A headless Vulkan context is still valid without presentation extensions;
+        // the platform layer can attach a surface later when a window is available.
         std::vector<const char*> extensions;
-        if (sdlExtensions) {
-            for (uint32_t i = 0; i < sdlExtCount; ++i) {
-                extensions.push_back(sdlExtensions[i]);
+        const bool videoReady = SDL_WasInit(SDL_INIT_VIDEO) != 0 || SDL_Init(SDL_INIT_VIDEO);
+        if (videoReady) {
+            uint32_t sdlExtCount = 0;
+            const char* const* sdlExtensions = SDL_Vulkan_GetInstanceExtensions(&sdlExtCount);
+            if (sdlExtensions) {
+                for (uint32_t i = 0; i < sdlExtCount; ++i) {
+                    extensions.push_back(sdlExtensions[i]);
+                }
+            } else {
+                VYRA_LOG_CHANNEL(LogChannel::Renderer, warn,
+                    "SDL Vulkan instance extensions unavailable: {}", SDL_GetError());
             }
+        } else {
+            VYRA_LOG_CHANNEL(LogChannel::Renderer, warn,
+                "SDL video subsystem unavailable; creating a headless Vulkan instance: {}", SDL_GetError());
         }
 
         if (m_ValidationEnabled) {
