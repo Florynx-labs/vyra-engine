@@ -6,6 +6,7 @@
 #include <vyra/physics3d/physics3d.hpp>
 #include <vyra/renderer/material.hpp>
 #include <vyra/scene/scene.hpp>
+#include <vyra/scene/physics_systems.hpp>
 #include <vyra/scripting/script_runtime.hpp>
 
 #include <cmath>
@@ -159,4 +160,38 @@ TEST_CASE("PBR material validates normalized parameters", "[renderer][materials]
     REQUIRE(features.IsValid());
     features.ShadowMapResolution = 32;
     REQUIRE_FALSE(features.IsValid());
+}
+
+
+TEST_CASE("Scene runtime lifecycle drives physics components through ECS", "[scene][physics2d]") {
+    using namespace vyra::scene;
+    struct LifecycleProbe final : SceneRuntimeSystem {
+        int starts{0}, fixed{0}, updates{0}, stops{0};
+        void OnStart(Scene&) override { ++starts; }
+        void OnFixedUpdate(Scene&, vyra::Timestep) override { ++fixed; }
+        void OnUpdate(Scene&, vyra::Timestep) override { ++updates; }
+        void OnStop(Scene&) override { ++stops; }
+    };
+
+    Scene scene("Runtime integration");
+    auto entity = scene.CreateEntity("Player");
+    entity.AddComponent<Transform2DComponent>(glm::vec2(0.0f));
+    vyra::physics2d::RigidBody2D body;
+    body.UseGravity = false;
+    body.Velocity = {1.0f, 0.0f};
+    entity.AddComponent<PhysicsBody2DComponent>(body);
+
+    vyra::physics2d::PhysicsWorldSettings2D settings;
+    settings.Gravity = {0.0f, 0.0f};
+    auto physics = std::make_shared<Physics2DSceneSystem>(settings);
+    auto probe = std::make_shared<LifecycleProbe>();
+    REQUIRE(scene.AddRuntimeSystem(physics));
+    REQUIRE(scene.AddRuntimeSystem(probe));
+    scene.OnUpdateRuntime(vyra::Timestep(1.0f / 30.0f));
+    REQUIRE(probe->starts == 1);
+    REQUIRE(probe->fixed == 2);
+    REQUIRE(probe->updates == 1);
+    REQUIRE(scene.GetRegistry().Get<Transform2DComponent>(entity.GetID()).Position.x > 0.0f);
+    scene.StopRuntime();
+    REQUIRE(probe->stops == 1);
 }
