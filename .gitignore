@@ -40,3 +40,6 @@ desktop.ini
 *.tmp
 *.bak
 *.swp
+
+# Rust GPUI editor artifacts
+/editor-rs/target/
