@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <vyra/runtime/runtime.hpp>
 
 #include <cmath>
