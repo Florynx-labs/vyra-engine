@@ -61,7 +61,8 @@ public:
         std::fill(output, output + frameCount * 2, 0.0f);
         for (auto& voice : m_Voices) {
             if (!voice.Playing || !voice.Clip || !voice.Clip->IsValid() ||
-                !std::isfinite(voice.Gain) || !std::isfinite(voice.Pan)) continue;
+                !std::isfinite(voice.Gain) || !std::isfinite(voice.Pan) ||
+                !std::isfinite(voice.CursorFrames) || voice.CursorFrames < 0.0) continue;
             const auto& clip = *voice.Clip;
             const std::size_t totalFrames = clip.Samples.size() / clip.Channels;
             const float pan = std::clamp(voice.Pan, -1.0f, 1.0f);
@@ -89,8 +90,12 @@ public:
         const glm::vec3 offset = emitter.Position - listener.Position;
         const float distance = glm::length(offset);
         if (!std::isfinite(distance) || distance <= 1.0e-6f) return {std::max(0.0f, emitter.Gain), 0.0f};
-        const glm::vec3 forward = glm::normalize(listener.Forward);
-        const glm::vec3 up = glm::normalize(listener.Up);
+        const float forwardLength = glm::length(listener.Forward);
+        const float upLength = glm::length(listener.Up);
+        if (forwardLength <= 1.0e-6f || upLength <= 1.0e-6f || !std::isfinite(forwardLength) || !std::isfinite(upLength))
+            return {Attenuation(listener, emitter), 0.0f};
+        const glm::vec3 forward = listener.Forward / forwardLength;
+        const glm::vec3 up = listener.Up / upLength;
         const glm::vec3 right = glm::cross(forward, up);
         const float rightLength = glm::length(right);
         const float pan = rightLength > 1.0e-6f ? glm::dot(offset / distance, right / rightLength) : 0.0f;
