@@ -4,6 +4,7 @@ add_executable(vyra_tests
     unit/test_rhi.cpp
     unit/test_ecs.cpp
     unit/test_scene.cpp
+    unit/test_editor_bridge.cpp
     unit/test_renderer.cpp
     unit/test_asset.cpp
     unit/test_profiler.cpp
@@ -19,6 +20,7 @@ target_link_libraries(vyra_tests
         vyra_renderer
         vyra_ecs
         vyra_scene
+        vyra_editor_bridge
         vyra_asset
         vyra_profiler
         vyra_jobs
