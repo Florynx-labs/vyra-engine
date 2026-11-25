@@ -15,9 +15,13 @@ concurrency:
 
 jobs:
   linux-unit:
-    name: Linux Debug build and unit tests
+    name: Linux ${{ matrix.build_type }} build and unit tests
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +41,8 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DVYRA_BUILD_TESTS=ON
           -DVYRA_BUILD_SAMPLES=OFF
           -DVYRA_BUILD_GPU_TESTS=OFF
 
@@ -46,3 +51,40 @@ jobs:
 
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
+
+  linux-vulkan-validation:
+    name: Linux Vulkan validation (lavapipe)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vulkan validation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential ninja-build pkg-config \
+            libvulkan-dev mesa-vulkan-drivers vulkan-validationlayers \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxi-dev libxfixes-dev libxss-dev libwayland-dev \
+            libxkbcommon-dev libdrm-dev libgbm-dev libxtst-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            libibus-1.0-dev libpipewire-0.3-dev libdecor-0-dev
+
+      - name: Configure GPU tests
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DVYRA_BUILD_TESTS=ON
+          -DVYRA_BUILD_SAMPLES=OFF
+          -DVYRA_BUILD_GPU_TESTS=ON
+
+      - name: Build GPU test targets
+        run: cmake --build build --parallel 2
+
+      - name: Run Vulkan validation tests on lavapipe
+        run: |
+          ICD="$(find /usr/share/vulkan/icd.d -name '*lvp*.json' -print -quit)"
+          test -n "$ICD"
+          VK_ICD_FILENAMES="$ICD" ctest --test-dir build -R 'Vulkan' --output-on-failure

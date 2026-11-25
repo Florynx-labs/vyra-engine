@@ -4,6 +4,7 @@
 #include "vyra/scene/components.hpp"
 
 #include <filesystem>
+#include <fstream>
 
 TEST_CASE("VYRA Scene - Entity Creation & Component Attachment", "[scene]") {
     vyra::Ref<vyra::scene::Scene> scene = vyra::CreateRef<vyra::scene::Scene>("Test Scene");
@@ -216,3 +217,50 @@ TEST_CASE("VYRA Scene - Play Mode World Isolation & Entity Lifecycle", "[scene][
     REQUIRE(restoredScene->GetRegistry().Size() == 2);
 }
 
+
+
+TEST_CASE("VYRA Scene - Reject malformed documents without mutating destination", "[scene][serialization][validation]") {
+    const std::string filepath = "test_scene_malformed.vyra";
+    {
+        std::ofstream output(filepath);
+        REQUIRE(output.is_open());
+        output << R"({
+            "FormatVersion": 2,
+            "Scene": "Broken Import",
+            "Entities": [{
+                "Entity": "00000000-0000-0000-0000-000000000001",
+                "TagComponent": { "Tag": "Broken" },
+                "TransformComponent": { "Translation": [1.0, "not-a-number", 3.0] }
+            }]
+        })";
+    }
+
+    auto destination = vyra::CreateRef<vyra::scene::Scene>("Keep This Scene");
+    destination->CreateEntity("Existing Entity");
+    vyra::scene::SceneSerializer serializer(destination);
+
+    REQUIRE_FALSE(serializer.Deserialize(filepath));
+    REQUIRE(destination->GetName() == "Keep This Scene");
+    REQUIRE(destination->GetRegistry().Size() == 1);
+
+    std::filesystem::remove(filepath);
+}
+
+TEST_CASE("VYRA Scene - Reject invalid top-level schema before scene replacement", "[scene][serialization][validation]") {
+    const std::string filepath = "test_scene_invalid_root.vyra";
+    {
+        std::ofstream output(filepath);
+        REQUIRE(output.is_open());
+        output << R"({ "FormatVersion": 2, "Scene": 42, "Entities": [] })";
+    }
+
+    auto destination = vyra::CreateRef<vyra::scene::Scene>("Stable Scene");
+    destination->CreateEntity("Preserved Entity");
+    vyra::scene::SceneSerializer serializer(destination);
+
+    REQUIRE_FALSE(serializer.Deserialize(filepath));
+    REQUIRE(destination->GetName() == "Stable Scene");
+    REQUIRE(destination->GetRegistry().Size() == 1);
+
+    std::filesystem::remove(filepath);
+}

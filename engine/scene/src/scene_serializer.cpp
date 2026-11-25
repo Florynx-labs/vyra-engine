@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 #include <filesystem>
+#include <cmath>
 
 namespace vyra::scene {
 
@@ -91,6 +92,74 @@ namespace vyra::scene {
         }
         
         return componentVersion == expectedVersion;
+    }
+
+
+    // Validate the complete document before mutating the destination scene.
+    static bool IsFiniteNumber(const json& value) {
+        return value.is_number() && std::isfinite(value.get<double>());
+    }
+
+    static bool ValidateVector(const json& value, size_t dimensions) {
+        if (!value.is_array() || value.size() != dimensions) return false;
+        for (const auto& component : value) {
+            if (!IsFiniteNumber(component)) return false;
+        }
+        return true;
+    }
+
+    static bool ValidateSceneDocument(const json& root) {
+        if (!root.is_object()) return false;
+        if (root.contains("FormatVersion") &&
+            (!root["FormatVersion"].is_number_integer() || root["FormatVersion"].get<int>() < 1)) return false;
+        if (root.contains("Scene") && !root["Scene"].is_string()) return false;
+        if (!root.contains("Entities")) return true;
+        if (!root["Entities"].is_array()) return false;
+
+        const auto objectField = [](const json& entity, const char* key) {
+            return !entity.contains(key) || entity[key].is_object();
+        };
+        const auto vectorField = [](const json& component, const char* key, size_t size) {
+            return !component.contains(key) || ValidateVector(component[key], size);
+        };
+
+        for (const auto& entity : root["Entities"]) {
+            if (!entity.is_object()) return false;
+            if (entity.contains("Entity") && !entity["Entity"].is_string()) return false;
+            if (!objectField(entity, "TagComponent") ||
+                !objectField(entity, "TransformComponent") ||
+                !objectField(entity, "CameraComponent") ||
+                !objectField(entity, "MeshComponent") ||
+                !objectField(entity, "SpriteRendererComponent") ||
+                !objectField(entity, "DirectionalLightComponent") ||
+                !objectField(entity, "PointLightComponent")) return false;
+
+            if (entity.contains("TagComponent") && entity["TagComponent"].contains("Tag") &&
+                !entity["TagComponent"]["Tag"].is_string()) return false;
+
+            if (entity.contains("TransformComponent")) {
+                const auto& transform = entity["TransformComponent"];
+                if (!vectorField(transform, "Translation", 3) ||
+                    !vectorField(transform, "Rotation", 3) ||
+                    !vectorField(transform, "Scale", 3)) return false;
+            }
+            if (entity.contains("MeshComponent") &&
+                !vectorField(entity["MeshComponent"], "Color", 4)) return false;
+            if (entity.contains("SpriteRendererComponent") &&
+                !vectorField(entity["SpriteRendererComponent"], "Color", 4)) return false;
+            if (entity.contains("DirectionalLightComponent") &&
+                !vectorField(entity["DirectionalLightComponent"], "Color", 3)) return false;
+            if (entity.contains("PointLightComponent") &&
+                !vectorField(entity["PointLightComponent"], "Color", 3)) return false;
+
+            if (entity.contains("CameraComponent")) {
+                const auto& camera = entity["CameraComponent"];
+                if (camera.contains("Camera") && !camera["Camera"].is_object()) return false;
+                if (camera.contains("Primary") && !camera["Primary"].is_boolean()) return false;
+                if (camera.contains("FixedAspectRatio") && !camera["FixedAspectRatio"].is_boolean()) return false;
+            }
+        }
+        return true;
     }
 
     SceneSerializer::SceneSerializer(Ref<Scene> scene)
@@ -257,6 +326,12 @@ namespace vyra::scene {
             return false;
         }
 
+        if (!ValidateSceneDocument(root)) {
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, error,
+                "Scene document failed structural validation; destination scene was left unchanged: {0}", filepath);
+            return false;
+        }
+
         if (root.contains("FormatVersion")) {
             const int version = root["FormatVersion"].get<int>();
             if (version > CURRENT_FORMAT_VERSION) {
@@ -282,6 +357,13 @@ namespace vyra::scene {
                 VYRA_LOG_CHANNEL(LogChannel::Serialization, error, "Failed to migrate old format to current version");
                 return false;
             }
+        }
+
+        // Migrations may add defaults, so validate again before clearing the live scene.
+        if (!ValidateSceneDocument(root)) {
+            VYRA_LOG_CHANNEL(LogChannel::Serialization, error,
+                "Migrated scene document is invalid; destination scene was left unchanged: {0}", filepath);
+            return false;
         }
 
         m_Scene->Clear();

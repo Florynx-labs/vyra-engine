@@ -1,6 +1,6 @@
 # VYRA Engine Roadmap Milestone Progress
 
-**Last audited:** 2026-11-24  
+**Last audited:** 2026-11-25  
 **Current version:** v0.1.4 (hardening in progress)  
 **Target:** v0.1.9 VYRA Hub  
 **Milestone accounting:** 4 of 10 milestones have implementation marked complete (v0.1.0–v0.1.3). This is 40% of the v0.1.0–v0.1.9 sequence. Completion does not imply every platform or GPU validation gate has passed.
@@ -77,12 +77,16 @@ v0.1.4 is not complete until clean Debug and Release builds, the complete unit s
 - Project templates and settings.
 - Safe update and rollback workflow.
 
+## Implemented foundations
+
+- Asset foundation from ADR 0010 is present in `engine/asset/`: generation-based `AssetHandle`, hierarchical `AssetID`, metadata, registry, load/unload callbacks, reference counting, dependency tracking, garbage collection, and unit tests. This supersedes the original missing-implementation report in [#2](https://github.com/Florynx-labs/vyra-engine/issues/2); importer pipelines and runtime asset types remain future work.
+
 ## Open technical debt
 
 - Renderer bypasses RHI abstractions: [#7](https://github.com/Florynx-labs/vyra-engine/issues/7), [#14](https://github.com/Florynx-labs/vyra-engine/issues/14).
 - ECS entity raw registry pointer lifetime: [#13](https://github.com/Florynx-labs/vyra-engine/issues/13).
 - Resource use-after-free, reference counting and generation handles: [#4](https://github.com/Florynx-labs/vyra-engine/issues/4), [#5](https://github.com/Florynx-labs/vyra-engine/issues/5), [#6](https://github.com/Florynx-labs/vyra-engine/issues/6).
-- Scene serialization schema validation and migration: [#8](https://github.com/Florynx-labs/vyra-engine/issues/8).
-- Vulkan validation and platform build coverage: [#9](https://github.com/Florynx-labs/vyra-engine/issues/9), [#15](https://github.com/Florynx-labs/vyra-engine/issues/15), [#10](https://github.com/Florynx-labs/vyra-engine/issues/10), [#16](https://github.com/Florynx-labs/vyra-engine/issues/16).
+- Scene serialization: structural validation now rejects malformed documents before mutating the destination scene; schema migration coverage remains an ongoing gate.
+- Vulkan validation and platform build coverage: [#9](https://github.com/Florynx-labs/vyra-engine/issues/9), [#15](https://github.com/Florynx-labs/vyra-engine/issues/15), [#10](https://github.com/Florynx-labs/vyra-engine/issues/10), [#16](https://github.com/Florynx-labs/vyra-engine/issues/16). CI now covers Linux Debug/Release and a dedicated lavapipe validation job; Windows and macOS remain open gates.
 
 See [P0/P1 audit](../audits/2026-11-p0-p1-audit.md) for detailed findings and validation commands.
