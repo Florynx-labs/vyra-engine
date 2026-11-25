@@ -1,0 +1,43 @@
+name: GPUI Editor
+
+on:
+  pull_request:
+    paths:
+      - "editor-rs/**"
+  push:
+    branches:
+      - "feat/gpui-editor-shell"
+    paths:
+      - "editor-rs/**"
+      - ".github/workflows/gpui-editor.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gpui-editor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-check:
+    name: Linux GPUI editor check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config cmake ninja-build \
+            libx11-dev libx11-xcb-dev libxcb1-dev libxcb-render0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
+            libxkbcommon-x11-dev libwayland-dev libfontconfig1-dev \
+            libfreetype6-dev libvulkan-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check GPUI editor
+        run: cargo check --manifest-path editor-rs/Cargo.toml
