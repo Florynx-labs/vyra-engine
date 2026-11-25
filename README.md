@@ -34,6 +34,8 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
 - **Vulkan 1.4 RHI foundation**: Vulkan backend accessed through the engine graphics abstraction; remaining renderer bypasses are tracked as technical debt.
 - **Decoupled ECS**: EnTT backend encapsulated inside `vyra::ecs::Registry` and `vyra::ecs::Entity`.
 - **Procedural Geometry & Mesh Renderer**: Built-in 3D mesh primitives (Cube, Grid floor, Sphere) and GLSL hemisphere lighting shader pipeline.
+- **2D Physics Foundation**: AABB/circle overlap queries, raycasts, deterministic spatial-hash broadphase and fixed-step rigid-body integration.
+- **3D Physics Geometry**: AABB/sphere overlap queries, contact generation and bounded raycasts. Full 3D dynamics remain under development.
 - **Deterministic Scene Serialization**: Human-readable `.vyra` JSON scene format with 128-bit UUID entity tracking.
 - **Legacy C++ Editor**: Dear ImGui docking interface retained during the transition.
 - **GPUI Editor Preview**: Standalone Rust editor shell with hierarchy, viewport workspace, inspector and console (experimental; see `editor-rs/`).
@@ -76,7 +78,7 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
          +--------------------------------------------+
 ```
 
-For detailed component documentation, see [Architecture Overview](docs/architecture.md).
+For detailed component documentation, see [Architecture Overview](docs/architecture.md). Physics scope and current limitations are documented in [Physics Modules](docs/physics/overview.md).
 
 ---
 
