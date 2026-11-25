@@ -2,6 +2,8 @@
 #include "vyra/core/log.hpp"
 #include "vyra/scene/components.hpp"
 
+#include <algorithm>
+
 namespace vyra::scene {
 
     Scene::Scene() : m_Name("Untitled Scene") {}
@@ -9,6 +11,7 @@ namespace vyra::scene {
     Scene::Scene(const std::string& name) : m_Name(name) {}
 
     Scene::~Scene() {
+        StopRuntime();
         m_Registry.Clear();
     }
 
@@ -73,9 +76,46 @@ namespace vyra::scene {
         VYRA_LOG_INFO("Cleared scene '{0}'", m_Name);
     }
 
+    bool Scene::AddRuntimeSystem(std::shared_ptr<SceneRuntimeSystem> system) {
+        if (!system) return false;
+        for (const auto& existing : m_RuntimeSystems) if (existing == system) return false;
+        m_RuntimeSystems.push_back(system);
+        if (m_RuntimeStarted) system->OnStart(*this);
+        return true;
+    }
+
+    bool Scene::RemoveRuntimeSystem(const std::shared_ptr<SceneRuntimeSystem>& system) {
+        const auto it = std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system);
+        if (it == m_RuntimeSystems.end()) return false;
+        if (m_RuntimeStarted) (*it)->OnStop(*this);
+        m_RuntimeSystems.erase(it);
+        return true;
+    }
+
+    void Scene::StopRuntime() {
+        if (!m_RuntimeStarted) return;
+        for (auto it = m_RuntimeSystems.rbegin(); it != m_RuntimeSystems.rend(); ++it)
+            (*it)->OnStop(*this);
+        m_RuntimeStarted = false;
+        m_RuntimeClock.Reset();
+    }
+
     void Scene::OnUpdateRuntime(Timestep ts) {
-        (void)ts;
-        // Runtime system updates (physics, scripts, dynamic transforms) will be added here
+        if (!m_RuntimeStarted) {
+            m_RuntimeStarted = true;
+            const auto systems = m_RuntimeSystems;
+            for (const auto& system : systems) system->OnStart(*this);
+        }
+
+        const auto systems = m_RuntimeSystems;
+        m_RuntimeClock.Advance(ts.GetSeconds(), [&](double fixedDelta) {
+            for (const auto& system : systems)
+                if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                    system->OnFixedUpdate(*this, Timestep(static_cast<float>(fixedDelta)));
+        });
+        for (const auto& system : systems)
+            if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                system->OnUpdate(*this, ts);
     }
 
     void Scene::OnUpdateEditor(Timestep ts) {
