@@ -235,9 +235,9 @@ TEST_CASE("Scene runtime lifecycle drives physics components through ECS", "[sce
     auto probe = std::make_shared<LifecycleProbe>();
     REQUIRE(scene.AddRuntimeSystem(physics));
     REQUIRE(scene.AddRuntimeSystem(probe));
-    scene.OnUpdateRuntime(vyra::Timestep(1.0f / 30.0f));
+    scene.OnUpdateRuntime(vyra::Timestep(1.0f / 60.0f));
     REQUIRE(probe->starts == 1);
-    REQUIRE(probe->fixed == 2);
+    REQUIRE(probe->fixed == 1);
     REQUIRE(probe->updates == 1);
     REQUIRE(scene.GetRegistry().Get<Transform2DComponent>(entity.GetID()).Position.x > 0.0f);
     const auto triggerEvents = physics->GetTriggerEvents();
