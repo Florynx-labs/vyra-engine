@@ -35,6 +35,7 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
 - **Decoupled ECS**: EnTT backend encapsulated inside `vyra::ecs::Registry` and `vyra::ecs::Entity`.
 - **Procedural Geometry & Mesh Renderer**: Built-in 3D mesh primitives (Cube, Grid floor, Sphere) and GLSL hemisphere lighting shader pipeline.
 - **2D Physics Foundation**: AABB/circle overlap queries, raycasts, deterministic spatial-hash broadphase and fixed-step rigid-body integration.
+- **Gameplay Runtime**: Typed event bus, backend-neutral input actions, bounded fixed-step clock and scalar animation playback primitives.
 - **3D Physics Geometry**: AABB/sphere overlap queries, contact generation and bounded raycasts. Full 3D dynamics remain under development.
 - **Deterministic Scene Serialization**: Human-readable `.vyra` JSON scene format with 128-bit UUID entity tracking.
 - **Legacy C++ Editor**: Dear ImGui docking interface retained during the transition.
@@ -78,7 +79,7 @@ Developed under **Florynx Labs**, VYRA provides a high-performance alternative e
          +--------------------------------------------+
 ```
 
-For detailed component documentation, see [Architecture Overview](docs/architecture.md). Physics scope and current limitations are documented in [Physics Modules](docs/physics/overview.md).
+For detailed component documentation, see [Architecture Overview](docs/architecture.md). Physics scope and current limitations are documented in [Physics Modules](docs/physics/overview.md). Runtime primitives and their guarantees are documented in [Runtime Subsystems](docs/runtime-subsystems.md).
 
 ---
 

@@ -38,7 +38,7 @@ VYRA Engine is engineered with a strict layered architecture designed for long-t
 
 ## Layer Responsibilities
 
-The current implementation also includes `vyra::asset`, `vyra::profiler`, and `vyra::jobs`. These modules are foundational and their validation status is tracked in the [milestone roadmap](roadmap/milestone-progress.md).
+The current implementation also includes `vyra::asset`, `vyra::profiler`, `vyra::jobs`, and the backend-neutral `vyra::runtime` module. These modules are foundational and their validation status is tracked in the [milestone roadmap](roadmap/milestone-progress.md).
 
 ### 1. `vyra::core`
 - Primitive types, `Ref<T>` / `Scope<T>` smart pointers.
@@ -80,7 +80,13 @@ The current implementation also includes `vyra::asset`, `vyra::profiler`, and `v
 ### 9. `vyra::asset`
 - Asset identifiers, generation-aware handles, metadata and registry foundations.
 
-### 10. `vyra::editor`
+### 10. `vyra::runtime`
+- Typed event bus with safe callback dispatch outside internal locks.
+- Named input actions with held/pressed/released state edges.
+- Bounded fixed-step clock and scalar animation playback primitives.
+- Backend-neutral by design; platform and scene adapters remain separate.
+
+### 11. `vyra::editor`
 - Professional Obsidian Dark UI theme styled for engineering workflows.
 - Dockable interface panels (`ViewportPanel`, `HierarchyPanel`, `InspectorPanel`, `ConsolePanel`).
 - State machine toolbar for Edit / Play / Pause simulation control.
