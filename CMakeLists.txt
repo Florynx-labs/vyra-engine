@@ -31,6 +31,7 @@ add_subdirectory(engine/editor_bridge)
 add_subdirectory(engine/asset)
 add_subdirectory(engine/profiler)
 add_subdirectory(engine/jobs)
+add_subdirectory(engine/runtime)
 add_subdirectory(editor)
 
 if(VYRA_BUILD_TESTS)
