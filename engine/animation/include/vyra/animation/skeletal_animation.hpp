@@ -5,6 +5,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cstdint>
 #include <glm/gtc/quaternion.hpp>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/gtx/quaternion.hpp>
 #include <algorithm>
 #include <cmath>
