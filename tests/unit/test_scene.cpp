@@ -151,7 +151,6 @@ TEST_CASE("VYRA Scene - Deserialize Replaces Existing Scene Contents", "[scene]"
 
     vyra::Ref<vyra::scene::Scene> dstScene = vyra::CreateRef<vyra::scene::Scene>("Destination Scene");
     vyra::ecs::Entity existingEntity = dstScene->CreateEntity("ExistingEntity");
-    existingEntity.AddComponent<vyra::scene::TransformComponent>();
 
     vyra::scene::SceneSerializer deserializer(dstScene);
     bool success = deserializer.Deserialize(tempFilepath);
