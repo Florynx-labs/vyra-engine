@@ -82,7 +82,9 @@ bool RigidBody2D::IsValid() const {
     return Finite(Position) && Finite(Velocity) && Finite(Force) &&
         Finite(Rotation) && Finite(AngularVelocity) && Finite(Mass) &&
         Finite(LinearDamping) && Finite(AngularDamping) &&
-        Finite(HalfExtents) && HalfExtents.x >= 0.0f && HalfExtents.y >= 0.0f &&\n        Mass >= 0.0f && LinearDamping >= 0.0f && AngularDamping >= 0.0f &&\n        Friction >= 0.0f && Friction <= 1.0f && Restitution >= 0.0f && Restitution <= 1.0f;
+        Finite(HalfExtents) && HalfExtents.x >= 0.0f && HalfExtents.y >= 0.0f &&
+        Mass >= 0.0f && LinearDamping >= 0.0f && AngularDamping >= 0.0f &&
+        Friction >= 0.0f && Friction <= 1.0f && Restitution >= 0.0f && Restitution <= 1.0f;
 }
 
 float RigidBody2D::InverseMass() const {
@@ -105,7 +107,9 @@ PhysicsWorld2D::PhysicsWorld2D(PhysicsWorldSettings2D settings) {
 
 bool PhysicsWorld2D::SetSettings(const PhysicsWorldSettings2D& settings) {
     if (!Finite(settings.Gravity) || !Finite(settings.FixedTimeStep) ||
-        settings.FixedTimeStep <= 0.0f || settings.MaxSubSteps == 0 ||\n        settings.SolverIterations == 0 || !Finite(settings.PositionCorrection) ||\n        settings.PositionCorrection < 0.0f || settings.PositionCorrection > 1.0f) return false;
+        settings.FixedTimeStep <= 0.0f || settings.MaxSubSteps == 0 ||
+        settings.SolverIterations == 0 || !Finite(settings.PositionCorrection) ||
+        settings.PositionCorrection < 0.0f || settings.PositionCorrection > 1.0f) return false;
     m_Settings = settings;
     m_Accumulator = std::min(m_Accumulator, m_Settings.FixedTimeStep);
     return true;
@@ -128,6 +132,7 @@ std::uint32_t PhysicsWorld2D::Advance(float frameDelta, std::vector<RigidBody2D>
 void PhysicsWorld2D::Step(float fixedDelta, std::vector<RigidBody2D>& bodies) {
     if (!Finite(fixedDelta) || fixedDelta <= 0.0f) return;
     m_TriggerEvents.clear();
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> currentTriggers;
 
     for (RigidBody2D& body : bodies) {
         if (!body.Enabled || !body.IsValid() || body.InverseMass() == 0.0f) {
@@ -157,12 +162,24 @@ void PhysicsWorld2D::Step(float fixedDelta, std::vector<RigidBody2D>& bodies) {
             Contact contact;
             if (!Overlap(boundsA, boundsB, &contact)) continue;
             if (a.IsTrigger || b.IsTrigger) {
-                m_TriggerEvents.push_back({static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j), true});
+                currentTriggers.emplace_back(static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j));
             } else {
                 contacts.push_back({i, j, contact});
             }
         }
     }
+
+    std::sort(currentTriggers.begin(), currentTriggers.end());
+    currentTriggers.erase(std::unique(currentTriggers.begin(), currentTriggers.end()), currentTriggers.end());
+    for (const auto& pair : currentTriggers) {
+        if (!std::binary_search(m_PreviousTriggers.begin(), m_PreviousTriggers.end(), pair))
+            m_TriggerEvents.push_back({pair.first, pair.second, true});
+    }
+    for (const auto& pair : m_PreviousTriggers) {
+        if (!std::binary_search(currentTriggers.begin(), currentTriggers.end(), pair))
+            m_TriggerEvents.push_back({pair.first, pair.second, false});
+    }
+    m_PreviousTriggers = std::move(currentTriggers);
 
     for (std::uint32_t iteration = 0; iteration < m_Settings.SolverIterations; ++iteration) {
         for (const auto& manifold : contacts) {
