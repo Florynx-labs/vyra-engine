@@ -74,7 +74,7 @@ struct PhysicsWorldSettings2D {
     float PositionCorrection{0.2f};
 };
 
-/// Fixed-step semi-implicit Euler simulation. Collision resolution is a later layer.
+/// Fixed-step rigid-body simulation with sequential impulses, friction, triggers and distance constraints.
 class VYRA_API PhysicsWorld2D {
 public:
     explicit PhysicsWorld2D(PhysicsWorldSettings2D settings = {});
