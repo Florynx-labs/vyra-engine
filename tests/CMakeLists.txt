@@ -13,6 +13,7 @@ add_executable(vyra_tests
     unit/test_profiler.cpp
     unit/test_jobs.cpp
     unit/test_memory_pool.cpp
+    unit/test_runtime.cpp
 )
 
 target_link_libraries(vyra_tests
