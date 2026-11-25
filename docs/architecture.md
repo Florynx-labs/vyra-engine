@@ -80,7 +80,13 @@ The current implementation also includes `vyra::asset`, `vyra::profiler`, `vyra:
 ### 9. `vyra::asset`
 - Asset identifiers, generation-aware handles, metadata and registry foundations.
 
-### 10. `vyra::editor`
+### 10. `vyra::runtime`
+- Typed event bus with safe callback dispatch outside internal locks.
+- Named input actions with held/pressed/released state edges.
+- Bounded fixed-step clock and scalar animation playback primitives.
+- Backend-neutral by design; platform and scene adapters remain separate.
+
+### 11. `vyra::editor`
 - Professional Obsidian Dark UI theme styled for engineering workflows.
 - Dockable interface panels (`ViewportPanel`, `HierarchyPanel`, `InspectorPanel`, `ConsolePanel`).
 - State machine toolbar for Edit / Play / Pause simulation control.
