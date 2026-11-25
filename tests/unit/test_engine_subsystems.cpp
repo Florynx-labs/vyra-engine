@@ -107,8 +107,11 @@ TEST_CASE("Skeletal animation samples and blends bone poses", "[animation]") {
     using namespace vyra::animation;
     AnimationClip clip;
     clip.FramesPerSecond = 1.0f;
-    clip.Frames = {{{glm::vec3(0), glm::quat(1,0,0,0), glm::vec3(1)}},
-                   {{glm::vec3(2,0,0), glm::quat(1,0,0,0), glm::vec3(1)}}};
+    clip.Frames.resize(2);
+    clip.Frames[0].push_back(BonePose{});
+    BonePose secondPose;
+    secondPose.Translation = {2.0f, 0.0f, 0.0f};
+    clip.Frames[1].push_back(secondPose);
     const auto pose = Sample(clip,0.5f,false);
     REQUIRE(pose.size() == 1);
     REQUIRE(std::abs(pose[0].Translation.x - 1.0f) < 1.0e-4f);
