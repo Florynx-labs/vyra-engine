@@ -118,5 +118,5 @@ TEST_CASE("VYRA ECS - Entity storage capacity reservation", "[ecs][capacity]") {
 
     const auto entity = registry.Create();
     REQUIRE(registry.Size() == 1);
-    REQUIRE(static_cast<entt::entity>(entity) != entt::null);
+    REQUIRE(static_cast<bool>(static_cast<entt::entity>(entity) != entt::null));
 }
