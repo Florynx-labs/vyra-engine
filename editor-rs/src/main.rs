@@ -51,6 +51,7 @@ fn scene_row(name: &'static str, kind: &'static str, selected: bool, cx: &mut Co
         .items_center()
         .gap_2()
         .bg(rgb(background))
+        .id(name)
         .on_click(cx.listener(move |this, _, _, cx| {
             this.selected_entity = name;
             cx.notify();
@@ -169,6 +170,7 @@ impl Render for VyraEditor {
                             .gap_2()
                             .child(
                                 div()
+                                    .id("play-toggle")
                                     .px_2()
                                     .py_1()
                                     .on_click(cx.listener(|this, _, _, cx| {
@@ -216,11 +218,11 @@ impl Render for VyraEditor {
                                             .child(label("⌕  Search entities...", MUTED, 11.)),
                                     ),
                             )
-                            .child(scene_row("Scene_01", "▾", true))
+                            .child(scene_row("Scene_01", "▾", self.selected_entity == "Scene_01", cx))
                             .child(scene_row("Directional Light", "☼", self.selected_entity == "Directional Light", cx))
                             .child(scene_row("Camera", "◉", self.selected_entity == "Camera", cx))
                             .child(scene_row("Environment", "◇", self.selected_entity == "Environment", cx))
-                            .child(scene_row("Cube", "▣", false))
+                            .child(scene_row("Cube", "▣", self.selected_entity == "Cube", cx))
                             .child(scene_row("Sphere", "●", self.selected_entity == "Sphere", cx))
                             .child(scene_row("Ground", "▱", self.selected_entity == "Ground", cx))
                             .child(div().flex_1()),
@@ -396,7 +398,7 @@ fn main() {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     ..Default::default()
                 },
-                |_, cx| cx.new(|_| VyraEditor),
+                |_, cx| cx.new(|_| VyraEditor { selected_entity: "Cube", is_playing: false }),
             )
             .expect("failed to open VYRA Editor window");
             cx.activate(true);
