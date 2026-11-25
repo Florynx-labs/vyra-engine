@@ -2,6 +2,7 @@
 #include <vyra/animation/skeletal_animation.hpp>
 #include <vyra/audio/audio_mixer.hpp>
 #include <vyra/input/controller.hpp>
+#include <vyra/input/input.hpp>
 #include <vyra/physics2d/world.hpp>
 #include <vyra/physics3d/physics3d.hpp>
 #include <vyra/renderer/material.hpp>
@@ -234,4 +235,36 @@ TEST_CASE("Scene runtime lifecycle drives physics components through ECS", "[sce
     REQUIRE(scene.GetRegistry().Get<Transform2DComponent>(entity.GetID()).Position.x > 0.0f);
     scene.StopRuntime();
     REQUIRE(probe->stops == 1);
+}
+
+
+TEST_CASE("2D solver applies friction to tangential velocity", "[physics2d][friction]") {
+    using namespace vyra::physics2d;
+    PhysicsWorldSettings2D settings;
+    settings.Gravity = {0.0f, 0.0f};
+    settings.SolverIterations = 4;
+    PhysicsWorld2D world(settings);
+    std::vector<RigidBody2D> bodies(2);
+    bodies[0].UseGravity = bodies[1].UseGravity = false;
+    bodies[0].Position = {-0.4f, 0.0f};
+    bodies[1].Position = {0.4f, 0.0f};
+    bodies[0].Velocity = {1.0f, 1.0f};
+    bodies[1].Velocity = {-1.0f, 0.0f};
+    bodies[0].Restitution = bodies[1].Restitution = 0.0f;
+    bodies[0].Friction = bodies[1].Friction = 1.0f;
+    world.Step(0.001f, bodies);
+    const float relativeTangent = std::abs(bodies[1].Velocity.y - bodies[0].Velocity.y);
+    REQUIRE(relativeTangent < 1.0f);
+}
+
+TEST_CASE("Input action unbinding safely removes the final binding", "[input][runtime]") {
+    vyra::runtime::InputActionMap actions;
+    REQUIRE(actions.Bind("Interact", 69));
+    REQUIRE(actions.Unbind("Interact", 69));
+    REQUIRE_FALSE(actions.IsDown("Interact"));
+    REQUIRE_FALSE(actions.Unbind("Interact", 69));
+    REQUIRE(actions.Bind("Interact", 70));
+    actions.SetButtonDown(70, true);
+    actions.AdvanceFrame();
+    REQUIRE(actions.WasPressed("Interact"));
 }
