@@ -6,6 +6,7 @@ add_executable(vyra_tests
     unit/test_scene.cpp
     unit/test_editor_bridge.cpp
     unit/test_renderer.cpp
+    unit/test_physics2d.cpp
     unit/test_asset.cpp
     unit/test_profiler.cpp
     unit/test_jobs.cpp
@@ -18,6 +19,7 @@ target_link_libraries(vyra_tests
         vyra_platform
         vyra_rhi
         vyra_renderer
+        vyra_physics2d
         vyra_ecs
         vyra_scene
         vyra_editor_bridge
