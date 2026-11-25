@@ -1,6 +1,9 @@
 #include "vyra/scene/scene.hpp"
 #include "vyra/core/log.hpp"
 #include "vyra/scene/components.hpp"
+#include "vyra/scene/components_2d.hpp"
+
+#include <algorithm>
 
 namespace vyra::scene {
 
@@ -9,6 +12,7 @@ namespace vyra::scene {
     Scene::Scene(const std::string& name) : m_Name(name) {}
 
     Scene::~Scene() {
+        StopRuntime();
         m_Registry.Clear();
     }
 
@@ -40,6 +44,10 @@ namespace vyra::scene {
 
         // Second pass: Copy components
         CopyComponent<TransformComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<Transform2DComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<PhysicsBody2DComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<PhysicsBody3DComponent>(newScene->m_Registry, other->m_Registry, entMap);
+        CopyComponent<SpriteComponent>(newScene->m_Registry, other->m_Registry, entMap);
         CopyComponent<CameraComponent>(newScene->m_Registry, other->m_Registry, entMap);
         CopyComponent<MeshComponent>(newScene->m_Registry, other->m_Registry, entMap);
         CopyComponent<SpriteRendererComponent>(newScene->m_Registry, other->m_Registry, entMap);
@@ -73,9 +81,53 @@ namespace vyra::scene {
         VYRA_LOG_INFO("Cleared scene '{0}'", m_Name);
     }
 
+    bool Scene::AddRuntimeSystem(std::shared_ptr<SceneRuntimeSystem> system) {
+        if (!system) return false;
+        for (const auto& existing : m_RuntimeSystems) if (existing == system) return false;
+        m_RuntimeSystems.push_back(system);
+        if (m_RuntimeStarted) system->OnStart(*this);
+        return true;
+    }
+
+    bool Scene::RemoveRuntimeSystem(const std::shared_ptr<SceneRuntimeSystem>& system) {
+        const auto it = std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system);
+        if (it == m_RuntimeSystems.end()) return false;
+        if (m_RuntimeStarted) (*it)->OnStop(*this);
+        m_RuntimeSystems.erase(it);
+        return true;
+    }
+
+    void Scene::StopRuntime() {
+        if (!m_RuntimeStarted) return;
+        m_RuntimeStarted = false;
+        const auto systems = m_RuntimeSystems;
+        for (auto it = systems.rbegin(); it != systems.rend(); ++it) {
+            if (std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), *it) != m_RuntimeSystems.end())
+                (*it)->OnStop(*this);
+        }
+        m_RuntimeClock.Reset();
+    }
+
     void Scene::OnUpdateRuntime(Timestep ts) {
-        (void)ts;
-        // Runtime system updates (physics, scripts, dynamic transforms) will be added here
+        if (!m_RuntimeStarted) {
+            m_RuntimeStarted = true;
+            const auto systems = m_RuntimeSystems;
+            for (const auto& system : systems) {
+                if (m_RuntimeStarted && std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                    system->OnStart(*this);
+            }
+            if (!m_RuntimeStarted) return;
+        }
+
+        const auto systems = m_RuntimeSystems;
+        m_RuntimeClock.Advance(ts.GetSeconds(), [&](double fixedDelta) {
+            for (const auto& system : systems)
+                if (m_RuntimeStarted && std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                    system->OnFixedUpdate(*this, Timestep(static_cast<float>(fixedDelta)));
+        });
+        for (const auto& system : systems)
+            if (m_RuntimeStarted && std::find(m_RuntimeSystems.begin(), m_RuntimeSystems.end(), system) != m_RuntimeSystems.end())
+                system->OnUpdate(*this, ts);
     }
 
     void Scene::OnUpdateEditor(Timestep ts) {

@@ -72,6 +72,11 @@ The current implementation also includes `vyra::asset`, `vyra::profiler`, `vyra:
 - JSON scene serialization & deserialization (`SceneSerializer`).
 - Isolated scene cloning for Play Mode state sandboxing (`Scene::Copy`).
 
+### 7. Physics
+- vyra::physics2d: deterministic spatial hash, AABB contact solver, friction, restitution, trigger transitions and distance constraints.
+- vyra::physics3d: sweep-and-prune broadphase, sphere/AABB/capsule/OBB queries and translational AABB rigid-body response.
+- Scene adapters synchronize 2D/3D physics components with ECS transforms through fixed-step runtime hooks.
+
 ### 8. `vyra::profiler` and `vyra::jobs`
 - CPU scope/frame and memory accounting profiler; GPU timing remains a future Vulkan-query integration.
 - Worker-thread job scheduler with explicit completion handles and graceful queue draining.
@@ -86,7 +91,14 @@ The current implementation also includes `vyra::asset`, `vyra::profiler`, `vyra:
 - Bounded fixed-step clock and scalar animation playback primitives.
 - Backend-neutral by design; platform and scene adapters remain separate.
 
-### 11. `vyra::editor`
+### 11. Gameplay modules
+- `vyra::animation`: skeleton metadata, CPU pose sampling and one-dimensional blend trees.
+- `vyra::audio`: backend-neutral stereo float mixer and distance attenuation primitives.
+- `vyra::scripting`: native script lifecycle, factory registry and generation-based hot reload.
+- `vyra::input`: controller axis normalization and configurable deadzones.
+- `vyra::renderer::PBRMaterial`: validated metallic/roughness material data and shadow feature configuration. Actual GPU texture residency, PBR shader passes and shadow rendering remain in the Vulkan renderer implementation.
+
+### 12. `vyra::editor`
 - Professional Obsidian Dark UI theme styled for engineering workflows.
 - Dockable interface panels (`ViewportPanel`, `HierarchyPanel`, `InspectorPanel`, `ConsolePanel`).
 - State machine toolbar for Edit / Play / Pause simulation control.

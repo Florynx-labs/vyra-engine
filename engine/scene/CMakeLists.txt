@@ -5,6 +5,7 @@ add_library(vyra_scene STATIC
     include/vyra/scene/components.hpp
     include/vyra/scene/scene_serializer.hpp
     include/vyra/scene/components_2d.hpp
+    include/vyra/scene/physics_systems.hpp
     include/vyra/scene/camera_2d.hpp
     src/scene.cpp
     src/editor_camera.cpp
@@ -22,6 +23,9 @@ target_include_directories(vyra_scene PUBLIC
 target_link_libraries(vyra_scene PUBLIC
     vyra::core
     vyra::ecs
+    vyra::runtime
+    vyra::physics2d
+    vyra::physics3d
     glm::glm
     nlohmann_json::nlohmann_json
 )

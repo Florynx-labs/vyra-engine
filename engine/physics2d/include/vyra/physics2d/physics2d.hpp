@@ -2,7 +2,7 @@
 
 #include "vyra/core/base.hpp"
 
-#include <glm/vec2.hpp>
+#include <glm/glm.hpp>
 #include <optional>
 
 namespace vyra::physics2d {
