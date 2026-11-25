@@ -15,7 +15,8 @@ struct AudioClip {
     std::vector<float> Samples;
     bool IsValid() const {
         return SampleRate > 0 && (Channels == 1 || Channels == 2) &&
-            !Samples.empty() && Samples.size() % Channels == 0;
+            !Samples.empty() && Samples.size() % Channels == 0 &&
+            std::all_of(Samples.begin(), Samples.end(), [](float sample) { return std::isfinite(sample); });
     }
 };
 
@@ -70,11 +71,11 @@ public:
             const float rightGain = voice.Gain * std::sqrt(0.5f * (1.0f + pan));
             const double step = static_cast<double>(clip.SampleRate) / m_OutputRate;
             for (std::size_t frame = 0; frame < frameCount; ++frame) {
-                std::size_t source = static_cast<std::size_t>(voice.CursorFrames);
-                if (source >= totalFrames) {
-                    if (voice.Looping) { voice.CursorFrames = std::fmod(voice.CursorFrames, static_cast<double>(totalFrames)); source = static_cast<std::size_t>(voice.CursorFrames); }
+                if (voice.CursorFrames >= static_cast<double>(totalFrames)) {
+                    if (voice.Looping) voice.CursorFrames = std::fmod(voice.CursorFrames, static_cast<double>(totalFrames));
                     else { voice.Playing = false; break; }
                 }
+                const std::size_t source = static_cast<std::size_t>(voice.CursorFrames);
                 const float left = clip.Samples[source * clip.Channels];
                 const float right = clip.Channels == 2 ? clip.Samples[source * 2 + 1] : left;
                 output[frame * 2] += left * leftGain;
