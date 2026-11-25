@@ -82,7 +82,7 @@ bool RigidBody2D::IsValid() const {
     return Finite(Position) && Finite(Velocity) && Finite(Force) &&
         Finite(Rotation) && Finite(AngularVelocity) && Finite(Mass) &&
         Finite(LinearDamping) && Finite(AngularDamping) &&
-        Mass >= 0.0f && LinearDamping >= 0.0f && AngularDamping >= 0.0f;
+        Finite(HalfExtents) && HalfExtents.x >= 0.0f && HalfExtents.y >= 0.0f &&\n        Mass >= 0.0f && LinearDamping >= 0.0f && AngularDamping >= 0.0f &&\n        Friction >= 0.0f && Friction <= 1.0f && Restitution >= 0.0f && Restitution <= 1.0f;
 }
 
 float RigidBody2D::InverseMass() const {
@@ -105,7 +105,7 @@ PhysicsWorld2D::PhysicsWorld2D(PhysicsWorldSettings2D settings) {
 
 bool PhysicsWorld2D::SetSettings(const PhysicsWorldSettings2D& settings) {
     if (!Finite(settings.Gravity) || !Finite(settings.FixedTimeStep) ||
-        settings.FixedTimeStep <= 0.0f || settings.MaxSubSteps == 0) return false;
+        settings.FixedTimeStep <= 0.0f || settings.MaxSubSteps == 0 ||\n        settings.SolverIterations == 0 || !Finite(settings.PositionCorrection) ||\n        settings.PositionCorrection < 0.0f || settings.PositionCorrection > 1.0f) return false;
     m_Settings = settings;
     m_Accumulator = std::min(m_Accumulator, m_Settings.FixedTimeStep);
     return true;
@@ -127,6 +127,8 @@ std::uint32_t PhysicsWorld2D::Advance(float frameDelta, std::vector<RigidBody2D>
 
 void PhysicsWorld2D::Step(float fixedDelta, std::vector<RigidBody2D>& bodies) {
     if (!Finite(fixedDelta) || fixedDelta <= 0.0f) return;
+    m_TriggerEvents.clear();
+
     for (RigidBody2D& body : bodies) {
         if (!body.Enabled || !body.IsValid() || body.InverseMass() == 0.0f) {
             body.Force = glm::vec2(0.0f);
@@ -136,12 +138,92 @@ void PhysicsWorld2D::Step(float fixedDelta, std::vector<RigidBody2D>& bodies) {
             (body.UseGravity ? m_Settings.Gravity : glm::vec2(0.0f));
         body.Velocity += acceleration * fixedDelta;
         body.Position += body.Velocity * fixedDelta;
-        body.AngularVelocity *= 1.0f /
-            (1.0f + body.AngularDamping * fixedDelta);
+        body.AngularVelocity *= 1.0f / (1.0f + body.AngularDamping * fixedDelta);
         body.Rotation += body.AngularVelocity * fixedDelta;
-        body.Velocity *= 1.0f /
-            (1.0f + body.LinearDamping * fixedDelta);
+        body.Velocity *= 1.0f / (1.0f + body.LinearDamping * fixedDelta);
         body.Force = glm::vec2(0.0f);
+    }
+
+    struct Manifold { std::size_t a, b; Contact contact; };
+    std::vector<Manifold> contacts;
+    for (std::size_t i = 0; i < bodies.size(); ++i) {
+        auto& a = bodies[i];
+        if (!a.Enabled || !a.IsValid()) continue;
+        const AABB boundsA{a.Position - a.HalfExtents, a.Position + a.HalfExtents};
+        for (std::size_t j = i + 1; j < bodies.size(); ++j) {
+            auto& b = bodies[j];
+            if (!b.Enabled || !b.IsValid() || (a.InverseMass() == 0.0f && b.InverseMass() == 0.0f)) continue;
+            const AABB boundsB{b.Position - b.HalfExtents, b.Position + b.HalfExtents};
+            Contact contact;
+            if (!Overlap(boundsA, boundsB, &contact)) continue;
+            if (a.IsTrigger || b.IsTrigger) {
+                m_TriggerEvents.push_back({static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j), true});
+            } else {
+                contacts.push_back({i, j, contact});
+            }
+        }
+    }
+
+    for (std::uint32_t iteration = 0; iteration < m_Settings.SolverIterations; ++iteration) {
+        for (const auto& manifold : contacts) {
+            auto& a = bodies[manifold.a];
+            auto& b = bodies[manifold.b];
+            const float invA = a.InverseMass(), invB = b.InverseMass();
+            const float invSum = invA + invB;
+            if (invSum <= 0.0f) continue;
+
+            glm::vec2 relative = b.Velocity - a.Velocity;
+            const float normalVelocity = glm::dot(relative, manifold.contact.Normal);
+            if (normalVelocity < 0.0f) {
+                const float restitution = std::min(a.Restitution, b.Restitution);
+                const float impulseMagnitude = -(1.0f + restitution) * normalVelocity / invSum;
+                const glm::vec2 impulse = manifold.contact.Normal * impulseMagnitude;
+                a.Velocity -= impulse * invA;
+                b.Velocity += impulse * invB;
+
+                relative = b.Velocity - a.Velocity;
+                glm::vec2 tangent = relative - manifold.contact.Normal *
+                    glm::dot(relative, manifold.contact.Normal);
+                const float tangentLength = glm::length(tangent);
+                if (tangentLength > std::numeric_limits<float>::epsilon()) {
+                    tangent /= tangentLength;
+                    float frictionImpulse = -glm::dot(relative, tangent) / invSum;
+                    const float friction = std::sqrt(a.Friction * b.Friction);
+                    frictionImpulse = std::clamp(frictionImpulse,
+                        -impulseMagnitude * friction, impulseMagnitude * friction);
+                    const glm::vec2 frictionVector = tangent * frictionImpulse;
+                    a.Velocity -= frictionVector * invA;
+                    b.Velocity += frictionVector * invB;
+                }
+            }
+
+            const float correctionMagnitude = std::max(
+                manifold.contact.Penetration - 0.005f, 0.0f) *
+                m_Settings.PositionCorrection / invSum;
+            const glm::vec2 correction = manifold.contact.Normal * correctionMagnitude;
+            a.Position -= correction * invA;
+            b.Position += correction * invB;
+        }
+
+        for (const auto& joint : m_Joints) {
+            if (!joint.Enabled || joint.FirstBody >= bodies.size() ||
+                joint.SecondBody >= bodies.size() || joint.FirstBody == joint.SecondBody ||
+                !Finite(joint.RestLength) || !Finite(joint.Stiffness) ||
+                joint.RestLength < 0.0f || joint.Stiffness < 0.0f || joint.Stiffness > 1.0f)
+                continue;
+            auto& a = bodies[joint.FirstBody];
+            auto& b = bodies[joint.SecondBody];
+            const float invA = a.InverseMass(), invB = b.InverseMass();
+            const float invSum = invA + invB;
+            if (!a.Enabled || !b.Enabled || invSum <= 0.0f) continue;
+            const glm::vec2 delta = b.Position - a.Position;
+            const float distance = glm::length(delta);
+            if (distance <= std::numeric_limits<float>::epsilon()) continue;
+            const glm::vec2 correction = delta / distance *
+                ((distance - joint.RestLength) * joint.Stiffness / invSum);
+            a.Position += correction * invA;
+            b.Position -= correction * invB;
+        }
     }
 }
 
