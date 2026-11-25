@@ -10,7 +10,7 @@ TEST_CASE("Job handles are unique and invalid by default", "[jobs][unit]") {
     vyra::jobs::JobHandle invalid;
     REQUIRE_FALSE(invalid.IsValid());
     vyra::jobs::JobHandle explicitHandle(9000);
-    auto generated = vyra::jobs::JobScheduler::GetInstance();
+    auto& generated = vyra::jobs::JobScheduler::GetInstance();
     (void)generated;
     REQUIRE(explicitHandle.IsValid());
     REQUIRE(explicitHandle.GetId() == 9000);
