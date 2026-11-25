@@ -41,6 +41,15 @@
 ### Release gate
 v0.1.4 is not complete until clean Debug and Release builds, the complete unit suite, Windows compilation and a Vulkan-capable GPU validation run are green. No benchmark improvement is claimed until repeatable before/after measurements exist.
 
+## Physics foundation delivered in the current engine work
+
+- Standalone 2D geometry queries, contacts and bounded raycasts.
+- Deterministic 2D uniform-grid broadphase with unique candidate pairs.
+- Fixed-step 2D rigid-body integration with gravity, forces, impulses, damping and bounded substeps.
+- Standalone 3D AABB/sphere collision queries and raycasts.
+- Catch2 coverage for geometry, broadphase and simulation stepping.
+- Remaining physics gates: contact solver, triggers, scene/ECS synchronization, 3D broadphase and 3D dynamics.
+
 ## v0.1.5 — Custom VYRA ECS
 
 - Specify entity/component/storage invariants and public API.
